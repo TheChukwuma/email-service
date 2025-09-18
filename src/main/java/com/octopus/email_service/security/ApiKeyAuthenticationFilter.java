@@ -39,15 +39,18 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                                   FilterChain filterChain) throws ServletException, IOException {
         
         String apiKey = request.getHeader(apiKeyHeader);
+        log.info("API Key header: {}, Value: {}", apiKeyHeader, apiKey);
         
         if (apiKey != null && !apiKey.isEmpty()) {
             try {
                 String hashedKey = hashApiKey(apiKey);
+                log.info("Hashed API key: {}", hashedKey);
                 Optional<ApiKey> apiKeyEntity = apiKeyRepository.findActiveByKeyHash(hashedKey, LocalDateTime.now());
                 
                 if (apiKeyEntity.isPresent()) {
                     ApiKey key = apiKeyEntity.get();
                     User user = key.getUser();
+                    log.info("Found API key for user: {}", user.getUsername());
                     
                     if (user.getIsActive()) {
                         // Update last used timestamp
@@ -62,16 +65,18 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                             );
                         
                         SecurityContextHolder.getContext().setAuthentication(authentication);
-                        log.debug("API key authentication successful for user: {}", user.getUsername());
+                        log.info("API key authentication successful for user: {}", user.getUsername());
                     } else {
                         log.warn("Inactive user attempted to use API key: {}", user.getUsername());
                     }
                 } else {
-                    log.warn("Invalid API key provided");
+                    log.warn("Invalid API key provided - not found in database");
                 }
             } catch (Exception e) {
                 log.error("Error processing API key authentication", e);
             }
+        } else {
+            log.warn("No API key provided in request");
         }
         
         filterChain.doFilter(request, response);

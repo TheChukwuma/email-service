@@ -35,8 +35,25 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain apiKeyFilterChain(HttpSecurity http) throws Exception {
         http
+            .securityMatcher("/v1/emails/**")
+            .csrf(AbstractHttpConfigurer::disable)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(authz -> authz
+                .anyRequest().authenticated()
+            )
+            .authenticationProvider(authenticationProvider())
+            .addFilterBefore(apiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        
+        return http.build();
+    }
+    
+    @Bean
+    public SecurityFilterChain jwtFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher("/v1/auth/**", "/v1/templates/**", "/v1/attachments/**", "/v1/admin/**", "/track/**", "/actuator/**")
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -45,15 +62,14 @@ public class SecurityConfig {
                 .requestMatchers("/v1/auth/**", "/actuator/health", "/actuator/info").permitAll()
                 // Email tracking endpoints (public for tracking pixels and click redirects)
                 .requestMatchers("/track/**").permitAll()
-                // API endpoints require API key authentication
-                .requestMatchers("/v1/emails/**", "/v1/templates/**", "/v1/attachments/**").authenticated()
+                // Templates and attachments require JWT authentication
+                .requestMatchers("/v1/templates/**", "/v1/attachments/**").authenticated()
                 // Admin endpoints require JWT authentication with admin role
                 .requestMatchers("/v1/admin/**").hasRole("ADMIN")
                 // All other requests require authentication
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
-            .addFilterBefore(apiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();

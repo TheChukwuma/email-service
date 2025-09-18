@@ -29,11 +29,10 @@ public class EmailController {
     
     @PostMapping("/send")
     public ResponseEntity<ApiResponse<EmailResponse>> sendEmail(
-            @Valid @RequestBody EmailRequest request,
-            Authentication authentication) {
+            @Valid @RequestBody EmailRequest request) {
         
         try {
-            log.info("Received email send request from user: {}", authentication.getName());
+            log.info("Received email send request from user: ");
             EmailResponse response = emailService.sendEmail(request);
             return ResponseEntity.ok(ApiResponse.success("Email queued successfully", response));
         } catch (Exception e) {
