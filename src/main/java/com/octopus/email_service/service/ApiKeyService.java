@@ -46,6 +46,34 @@ public class ApiKeyService {
         return apiKey;
     }
     
+    @Transactional
+    public ApiKey generateApiKey(Long userId, ApiKeyRequest request) {
+        // Generate a secure random API key
+        String plainApiKey = generateSecureApiKey();
+        String hashedKey = hashApiKey(plainApiKey);
+        
+        // Create a User object with just the ID for the relationship
+        User user = new User();
+        user.setId(userId);
+        
+        ApiKey apiKeyEntity = ApiKey.builder()
+                .user(user)
+                .keyHash(hashedKey)
+                .keyName(request.getKeyName())
+                .isActive(true)
+                .expiresAt(request.getExpiresAt())
+                .build();
+        
+        ApiKey savedApiKey = apiKeyRepository.save(apiKeyEntity);
+        
+        // Store the plain key temporarily for response (in production, this should be handled differently)
+        savedApiKey.setPlainKey(plainApiKey);
+        
+        log.info("Generated API key for user ID: {} with name: {}", userId, request.getKeyName());
+        
+        return savedApiKey;
+    }
+    
     public List<ApiKey> getUserApiKeys(User user) {
         return apiKeyRepository.findByUserIdAndIsActiveTrue(user.getId());
     }

@@ -49,4 +49,7 @@ public class ApiKey {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    @Transient
+    private String plainKey; // Temporary field for API response, not persisted
 }
