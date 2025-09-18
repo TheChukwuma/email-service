@@ -132,6 +132,15 @@ public class EmailWorker {
                 context.setVariables(templateVars);
                 body = templateEngine.process(template.getBodyTemplate(), context);
             }
+
+        }else{
+            // Thymeleaf context variables
+            Context context = new Context();
+            context.setVariable("subject", subject);
+            context.setVariable("body", body);
+            String htmlContent = templateEngine.process("email/classic-email", context);
+            helper.setText(htmlContent, true);
+
         }
         
         helper.setSubject(subject);
@@ -139,8 +148,6 @@ public class EmailWorker {
         // Set body based on template type
         if (email.getTemplate() != null && email.getTemplate().getBodyType() == BodyType.HTML) {
             helper.setText(body, true);
-        } else {
-            helper.setText(body, false);
         }
         
         // Add tracking headers

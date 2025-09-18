@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+        .header {
+            background: #4facfe;
+            color: white;
+            text-align: center;
+            padding: 25px;
+        }
+        .content {
+            padding: 30px;
+            color: #444;
+            font-size: 16px;
+        }
+        .btn {
+            display: inline-block;
+            background: #00c6ff;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            padding: 15px;
+            font-size: 13px;
+            background: #f1f1f1;
+            color: #777;
+        }
+    </style>
+    <title></title>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1 th:text="${subject}">Welcome!</h1>
+    </div>
+    <div class="content">
+        <p th:text="${body}">This is a modern styled email template with gradient header.</p>
+        <a th:href="${actionUrl}" class="btn">Confirm Now</a>
+    </div>
+    <div class="footer">
+        Need help? Contact <a href="mailto:support@example.com">support@example.com</a>
+    </div>
+</div>
+</body>
+</html>

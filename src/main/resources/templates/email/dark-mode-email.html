@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #1e1e1e;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+            overflow: hidden;
+        }
+        .header {
+            background: #bb86fc;
+            color: #121212;
+            text-align: center;
+            padding: 25px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+            font-size: 16px;
+            line-height: 1.7;
+            color: #f5f5f5;
+        }
+        .btn {
+            display: inline-block;
+            background: #03dac6;
+            color: #121212;
+            padding: 14px 26px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background: #00c4b4;
+        }
+        .footer {
+            text-align: center;
+            padding: 15px;
+            font-size: 13px;
+            background: #2c2c2c;
+            color: #aaa;
+        }
+        a {
+            color: #bb86fc;
+            text-decoration: none;
+        }
+    </style>
+    <title></title>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1 th:text="${subject}">Dark Mode Email</h1>
+    </div>
+    <div class="content">
+        <p th:text="${body}">This is your message in a modern dark theme.</p>
+        <a th:href="${actionUrl}" class="btn">Take Action</a>
+    </div>
+    <div class="footer">
+        <p>© 2025 Octopus Email Service | <a href="mailto:support@example.com">Support</a></p>
+    </div>
+</div>
+</body>
+</html>
