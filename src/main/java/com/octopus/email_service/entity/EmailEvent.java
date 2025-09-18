@@ -31,7 +31,7 @@ public class EmailEvent {
     @Column(name = "event_type", nullable = false, length = 30)
     private EventType eventType;
     
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "TEXT")
     private String detail;
     
     @Column(name = "ip_address")

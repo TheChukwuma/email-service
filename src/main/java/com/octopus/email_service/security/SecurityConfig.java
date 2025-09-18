@@ -3,6 +3,7 @@ package com.octopus.email_service.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -33,22 +34,22 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    
+
+    @Order(1)
     @Bean
     public SecurityFilterChain apiKeyFilterChain(HttpSecurity http) throws Exception {
         http
-            .securityMatcher("/v1/emails/**")
+            .securityMatcher("/v1/emails/**") // only applies here
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(authz -> authz
-                .anyRequest().authenticated()
-            )
-            .addFilter(apiKeyAuthenticationFilter);
-        
+            //.authorizeHttpRequests(authz -> authz.anyRequest().authenticated())
+            .addFilterBefore(apiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
-    
+
+    @Order(2)
     @Bean
     public SecurityFilterChain jwtFilterChain(HttpSecurity http) throws Exception {
         http

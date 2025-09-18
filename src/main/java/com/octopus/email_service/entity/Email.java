@@ -51,14 +51,14 @@ public class Email {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "template_name", referencedColumnName = "name")
     private Template template;
-    
-    @Column(name = "template_vars", columnDefinition = "jsonb")
+
+    @Column(name = "template_vars", columnDefinition = "TEXT")
     private String templateVars;
     
     @Column(columnDefinition = "TEXT")
     private String body;
     
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "TEXT")
     private String attachments;
     
     @Enumerated(EnumType.STRING)

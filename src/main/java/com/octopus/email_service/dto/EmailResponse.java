@@ -46,7 +46,7 @@ public class EmailResponse {
                 .ccAddresses(email.getCcAddresses())
                 .bccAddresses(email.getBccAddresses())
                 .subject(email.getSubject())
-                .templateName(email.getTemplate() != null ? email.getTemplate().getName() : null)
+//                .templateName(email.getTemplate() != null ? email.getTemplate().getName() : null)
                 .body(email.getBody())
                 .status(email.getStatus())
                 .attempts(email.getAttempts())

@@ -1,5 +1,5 @@
 -- Create users table
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE users (
 );
 
 -- Create api_keys table
-CREATE TABLE api_keys (
+CREATE TABLE IF NOT EXISTS api_keys (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     key_hash VARCHAR(255) UNIQUE NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE api_keys (
 );
 
 -- Create templates table
-CREATE TABLE templates (
+CREATE TABLE IF NOT EXISTS templates (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL,
     subject_template TEXT NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE templates (
 );
 
 -- Create emails table
-CREATE TABLE emails (
+CREATE TABLE IF NOT EXISTS emails (
     id BIGSERIAL PRIMARY KEY,
     uuid UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
     from_address VARCHAR(255) NOT NULL,
@@ -46,9 +46,9 @@ CREATE TABLE emails (
     bcc_addresses TEXT[],
     subject VARCHAR(500) NOT NULL,
     template_name VARCHAR(100) REFERENCES templates(name),
-    template_vars JSONB,
+    template_vars TEXT,
     body TEXT,
-    attachments JSONB,
+    attachments VARCHAR(50000),
     status VARCHAR(20) DEFAULT 'ENQUEUED' CHECK (status IN ('ENQUEUED', 'SENDING', 'SENT', 'FAILED', 'BOUNCED', 'DELIVERED')),
     attempts INTEGER DEFAULT 0,
     max_attempts INTEGER DEFAULT 5,
@@ -61,7 +61,7 @@ CREATE TABLE emails (
 );
 
 -- Create email_events table
-CREATE TABLE email_events (
+CREATE TABLE IF NOT EXISTS email_events (
     id BIGSERIAL PRIMARY KEY,
     email_id BIGINT NOT NULL REFERENCES emails(id) ON DELETE CASCADE,
     event_type VARCHAR(30) NOT NULL CHECK (event_type IN ('ENQUEUED', 'SENDING', 'SENT', 'DELIVERED', 'BOUNCED', 'OPEN', 'CLICK', 'SOFT_BOUNCE', 'HARD_BOUNCE', 'FAILED')),
@@ -72,7 +72,7 @@ CREATE TABLE email_events (
 );
 
 -- Create blacklist table
-CREATE TABLE blacklist (
+CREATE TABLE IF NOT EXISTS blacklist (
     id BIGSERIAL PRIMARY KEY,
     email_address VARCHAR(255) UNIQUE NOT NULL,
     reason VARCHAR(100),
@@ -82,7 +82,7 @@ CREATE TABLE blacklist (
 );
 
 -- Create attachments table
-CREATE TABLE attachments (
+CREATE TABLE IF NOT EXISTS attachments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     original_filename VARCHAR(500) NOT NULL,
     stored_filename VARCHAR(500) NOT NULL,

@@ -1,7 +1,6 @@
 package com.octopus.email_service.security;
 
 import com.octopus.email_service.entity.ApiKey;
-import com.octopus.email_service.entity.User;
 import com.octopus.email_service.repository.ApiKeyRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -11,9 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -22,7 +18,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.Optional;
 
 @Component
@@ -36,7 +31,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private String apiKeyHeader;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, @NotNull HttpServletResponse response,
+    protected void doFilterInternal(HttpServletRequest request,
+                                    @NotNull HttpServletResponse response,
                                     @NotNull FilterChain filterChain) throws ServletException, IOException {
 
         String apiKey = request.getHeader(apiKeyHeader);
@@ -70,7 +66,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         } else {
             log.warn("No API key provided in request");
         }
-
+        System.out.println("we go here");
         filterChain.doFilter(request, response);
     }
 
