@@ -52,4 +52,19 @@ public class ApiKey {
     
     @Transient
     private String plainKey; // Temporary field for API response, not persisted
+
+    @Override
+    public String toString() {
+        return "ApiKey{" +
+                "id=" + id +
+                ", keyHash='" + keyHash + '\'' +
+                ", keyName='" + keyName + '\'' +
+                ", isActive=" + isActive +
+                ", lastUsedAt=" + lastUsedAt +
+                ", expiresAt=" + expiresAt +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                ", plainKey='" + plainKey + '\'' +
+                '}';
+    }
 }

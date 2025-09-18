@@ -44,8 +44,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 .anyRequest().authenticated()
             )
-            .authenticationProvider(authenticationProvider())
-            .addFilterBefore(apiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilter(apiKeyAuthenticationFilter);
         
         return http.build();
     }
@@ -53,7 +52,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain jwtFilterChain(HttpSecurity http) throws Exception {
         http
-            .securityMatcher("/v1/auth/**", "/v1/templates/**", "/v1/attachments/**", "/v1/admin/**", "/track/**", "/actuator/**")
+            //.securityMatcher("/v1/auth/**", "/v1/templates/**", "/v1/attachments/**", "/v1/admin/**", "/track/**", "/actuator/**")
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -62,6 +61,7 @@ public class SecurityConfig {
                 .requestMatchers("/v1/auth/**", "/actuator/health", "/actuator/info").permitAll()
                 // Email tracking endpoints (public for tracking pixels and click redirects)
                 .requestMatchers("/track/**").permitAll()
+                .requestMatchers("/v1/email/**").permitAll()
                 // Templates and attachments require JWT authentication
                 .requestMatchers("/v1/templates/**", "/v1/attachments/**").authenticated()
                 // Admin endpoints require JWT authentication with admin role

@@ -4,8 +4,10 @@ import com.octopus.email_service.dto.ApiKeyRequest;
 import com.octopus.email_service.entity.ApiKey;
 import com.octopus.email_service.entity.User;
 import com.octopus.email_service.repository.ApiKeyRepository;
+import com.octopus.email_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,8 @@ public class ApiKeyService {
     
     private final ApiKeyRepository apiKeyRepository;
     private final SecureRandom secureRandom = new SecureRandom();
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     
     @Transactional
     public String createApiKey(User user, ApiKeyRequest request) {
@@ -54,8 +58,13 @@ public class ApiKeyService {
         
         // Create a User object with just the ID for the relationship
         User user = new User();
-        user.setId(userId);
-        
+        user.setUsername(request.getClientId());
+        user.setEmail(request.getClientId());
+        user.setIsActive(true);
+        user.setIsAdmin(false);
+        user.setPasswordHash(passwordEncoder.encode("password123"));
+        user = userRepository.save(user);
+
         ApiKey apiKeyEntity = ApiKey.builder()
                 .user(user)
                 .keyHash(hashedKey)
