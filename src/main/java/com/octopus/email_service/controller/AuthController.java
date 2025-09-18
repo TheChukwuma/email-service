@@ -1,6 +1,7 @@
 package com.octopus.email_service.controller;
 
 import com.octopus.email_service.dto.ApiResponse;
+import com.octopus.email_service.dto.LoginRequest;
 import com.octopus.email_service.dto.UserRequest;
 import com.octopus.email_service.entity.User;
 import com.octopus.email_service.security.JwtUtil;
@@ -62,26 +63,5 @@ public class AuthController {
                     .body(ApiResponse.error("Registration failed: " + e.getMessage()));
         }
     }
-    
-    // Inner class for login request
-    public static class LoginRequest {
-        private String username;
-        private String password;
-        
-        public String getUsername() {
-            return username;
-        }
-        
-        public void setUsername(String username) {
-            this.username = username;
-        }
-        
-        public String getPassword() {
-            return password;
-        }
-        
-        public void setPassword(String password) {
-            this.password = password;
-        }
-    }
+
 }

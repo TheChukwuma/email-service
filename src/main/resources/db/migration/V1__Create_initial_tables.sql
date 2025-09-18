@@ -81,6 +81,31 @@ CREATE TABLE blacklist (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create attachments table
+CREATE TABLE attachments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    original_filename VARCHAR(500) NOT NULL,
+    stored_filename VARCHAR(500) NOT NULL,
+    content_type VARCHAR(100) NOT NULL,
+    file_size BIGINT NOT NULL,
+    storage_type VARCHAR(20) NOT NULL CHECK (storage_type IN ('MINIO', 'CLOUDINARY', 'LOCAL')),
+    storage_path VARCHAR(1000) NOT NULL,
+    cloudinary_public_id VARCHAR(500),
+    cloudinary_url VARCHAR(1000),
+    minio_bucket VARCHAR(100),
+    minio_object_key VARCHAR(500),
+    checksum VARCHAR(500),
+    is_inline BOOLEAN DEFAULT FALSE,
+    content_id VARCHAR(100),
+    description TEXT,
+    is_processed BOOLEAN NOT NULL DEFAULT FALSE,
+    processing_error TEXT,
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_emails_status ON emails(status);
 CREATE INDEX idx_emails_created_at ON emails(created_at);
@@ -92,6 +117,11 @@ CREATE INDEX idx_email_events_created_at ON email_events(created_at);
 CREATE INDEX idx_api_keys_user_id ON api_keys(user_id);
 CREATE INDEX idx_api_keys_key_hash ON api_keys(key_hash);
 CREATE INDEX idx_blacklist_email_address ON blacklist(email_address);
+CREATE INDEX idx_attachments_created_by ON attachments(created_by);
+CREATE INDEX idx_attachments_storage_type ON attachments(storage_type);
+CREATE INDEX idx_attachments_is_processed ON attachments(is_processed);
+CREATE INDEX idx_attachments_expires_at ON attachments(expires_at);
+CREATE INDEX idx_attachments_created_at ON attachments(created_at);
 
 -- Create triggers for updated_at timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -115,4 +145,7 @@ CREATE TRIGGER update_emails_updated_at BEFORE UPDATE ON emails
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_blacklist_updated_at BEFORE UPDATE ON blacklist
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_attachments_updated_at BEFORE UPDATE ON attachments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

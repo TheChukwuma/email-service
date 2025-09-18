@@ -5,10 +5,6 @@ import com.octopus.email_service.entity.User;
 import com.octopus.email_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,28 +15,10 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class UserService implements UserDetailsService {
+public class UserService {
     
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findActiveByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUsername())
-                .password(user.getPasswordHash())
-                .authorities(user.getIsAdmin() ? 
-                    List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_USER")) :
-                    List.of(new SimpleGrantedAuthority("ROLE_USER")))
-                .accountExpired(false)
-                .accountLocked(!user.getIsActive())
-                .credentialsExpired(false)
-                .disabled(!user.getIsActive())
-                .build();
-    }
     
     @Transactional
     public User createUser(UserRequest request) {

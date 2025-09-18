@@ -36,22 +36,6 @@ public class EmailRequest {
     
     private String body;
     
-    private List<AttachmentRequest> attachments;
-    
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class AttachmentRequest {
-        @NotBlank(message = "Attachment name is required")
-        private String name;
-        
-        @NotBlank(message = "Attachment content is required")
-        private String content; // Base64 encoded content
-        
-        @NotBlank(message = "Attachment type is required")
-        private String contentType;
-        
-        private Long size;
-    }
+    private List<EmailAttachmentDto> attachments;
+
 }

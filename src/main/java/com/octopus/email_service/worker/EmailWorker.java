@@ -1,11 +1,16 @@
 package com.octopus.email_service.worker;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.octopus.email_service.dto.EmailRequest;
+import com.octopus.email_service.entity.Attachment;
 import com.octopus.email_service.entity.Email;
 import com.octopus.email_service.entity.Template;
 import com.octopus.email_service.enums.BodyType;
 import com.octopus.email_service.enums.EmailStatus;
+import com.octopus.email_service.repository.AttachmentRepository;
 import com.octopus.email_service.repository.EmailRepository;
+import com.octopus.email_service.service.AttachmentService;
 import com.octopus.email_service.service.EmailService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -13,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
@@ -20,7 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -28,7 +37,9 @@ import java.util.Map;
 public class EmailWorker {
     
     private final EmailRepository emailRepository;
+    private final AttachmentRepository attachmentRepository;
     private final EmailService emailService;
+    private final AttachmentService attachmentService;
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
     private final ObjectMapper objectMapper;
@@ -136,8 +147,8 @@ public class EmailWorker {
         helper.getMimeMessage().setHeader("X-Email-ID", email.getUuid().toString());
         helper.getMimeMessage().setHeader("List-Unsubscribe", "<mailto:unsubscribe@example.com>");
         
-        // TODO: Add attachments processing
-        // processAttachments(helper, email.getAttachments());
+        // Process attachments
+        processAttachments(helper, email.getAttachments());
         
         // Send the email
         mailSender.send(mimeMessage);
@@ -168,5 +179,49 @@ public class EmailWorker {
         // 1. Using RabbitMQ delayed message plugin
         // 2. Using a separate retry queue with TTL
         // 3. Using Spring's @Scheduled annotation with a retry table
+    }
+    
+    private void processAttachments(MimeMessageHelper helper, String attachmentsJson) {
+        if (attachmentsJson == null || attachmentsJson.trim().isEmpty()) {
+            return;
+        }
+        
+        try {
+            List<Attachment> attachments = objectMapper.readValue(
+                    attachmentsJson, 
+                    new TypeReference<List<Attachment>>() {}
+            );
+            
+            for (Attachment attachment : attachments) {
+                try {
+                    // Download attachment content
+                    InputStream attachmentStream = attachmentService.downloadAttachment(attachment.getId());
+                    byte[] attachmentBytes = attachmentStream.readAllBytes();
+                    attachmentStream.close();
+                    
+                    // Determine display name
+                    String displayName = attachment.getOriginalFilename();
+                    
+                    // Add attachment to email (inline or regular)
+                    if (attachment.getIsInline() != null && attachment.getIsInline() && attachment.getContentId() != null) {
+                        // Add as inline attachment with content ID
+                        helper.addInline(attachment.getContentId(), new ByteArrayResource(attachmentBytes), attachment.getContentType());
+                        log.debug("Added inline attachment {} with CID {} to email", displayName, attachment.getContentId());
+                    } else {
+                        // Add as regular attachment
+                        helper.addAttachment(displayName, new ByteArrayResource(attachmentBytes), attachment.getContentType());
+                        log.debug("Added attachment {} to email", displayName);
+                    }
+                    
+                } catch (Exception e) {
+                    log.error("Failed to process attachment {}: {}", attachment.getId(), e.getMessage(), e);
+                    // Continue processing other attachments even if one fails
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("Failed to parse attachments: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to process attachments", e);
+        }
     }
 }

@@ -22,6 +22,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -29,7 +30,7 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class SecurityConfig {
     
-    private final UserDetailsService userDetailsService;
+    private final CustomUserDetailsService userDetailsService;
     private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     
@@ -45,7 +46,7 @@ public class SecurityConfig {
                 // Email tracking endpoints (public for tracking pixels and click redirects)
                 .requestMatchers("/track/**").permitAll()
                 // API endpoints require API key authentication
-                .requestMatchers("/v1/emails/**", "/v1/templates/**").authenticated()
+                .requestMatchers("/v1/emails/**", "/v1/templates/**", "/v1/attachments/**").authenticated()
                 // Admin endpoints require JWT authentication with admin role
                 .requestMatchers("/v1/admin/**").hasRole("ADMIN")
                 // All other requests require authentication
@@ -79,9 +80,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
