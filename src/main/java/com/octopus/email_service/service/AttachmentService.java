@@ -242,25 +242,19 @@ public class AttachmentService {
     }
     
     private String uploadToStorage(MultipartFile file, Attachment attachment, AttachmentUploadRequest request) throws Exception {
-        switch (attachment.getStorageType()) {
-            case MINIO:
-                return uploadToMinIO(file, attachment);
-            case CLOUDINARY:
-                return uploadToCloudinary(file, attachment, request);
-            default:
-                throw new IllegalArgumentException("Unsupported storage type: " + attachment.getStorageType());
-        }
+        return switch (attachment.getStorageType()) {
+            case MINIO -> uploadToMinIO(file, attachment);
+            case CLOUDINARY -> uploadToCloudinary(file, attachment, request);
+            default -> throw new IllegalArgumentException("Unsupported storage type: " + attachment.getStorageType());
+        };
     }
     
     private String uploadBase64ToStorage(byte[] content, Attachment attachment, AttachmentUploadRequest request) throws Exception {
-        switch (attachment.getStorageType()) {
-            case MINIO:
-                return uploadBase64ToMinIO(content, attachment);
-            case CLOUDINARY:
-                return uploadBase64ToCloudinary(content, attachment, request);
-            default:
-                throw new IllegalArgumentException("Unsupported storage type: " + attachment.getStorageType());
-        }
+        return switch (attachment.getStorageType()) {
+            case MINIO -> uploadBase64ToMinIO(content, attachment);
+            case CLOUDINARY -> uploadBase64ToCloudinary(content, attachment, request);
+            default -> throw new IllegalArgumentException("Unsupported storage type: " + attachment.getStorageType());
+        };
     }
     
     private String uploadToMinIO(MultipartFile file, Attachment attachment) throws Exception {
