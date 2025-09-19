@@ -15,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
@@ -27,51 +26,21 @@ public class ApiKeyService {
 
     private final ApiKeyRepository apiKeyRepository;
     private final SecureRandom secureRandom = new SecureRandom();
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public String createApiKey(User user, ApiKeyRequest request) {
-        // Generate a secure random API key
-        String apiKey = generateSecureApiKey();
-        String hashedKey = hashApiKey(apiKey);
-
-        ApiKey apiKeyEntity = ApiKey.builder()
-                .user(user)
-                .keyHash(hashedKey)
-                .keyName(request.getKeyName())
-                .isActive(true)
-                .expiresAt(request.getExpiresAt())
-                .build();
-
-        apiKeyRepository.save(apiKeyEntity);
-        log.info("Created API key for user: {}", user.getUsername());
-
-        // Return the plain text key only once
-        return apiKey;
-    }
-
-    @Transactional
-    public ApiKey generateApiKey(Long userId, ApiKeyRequest request) {
+    public ApiKey createApiKey(String username, ApiKeyRequest request) {
         // Generate a secure random API key
         String plainApiKey = generateSecureApiKey();
         String hashedKey = hashApiKey(plainApiKey);
 
-        // Create a User object with just the ID for the relationship
-        User user = new User();
-        user.setUsername(request.getClientId());
-        user.setEmail(request.getClientId());
-        user.setIsActive(true);
-        user.setIsAdmin(false);
-        user.setPasswordHash(passwordEncoder.encode("password123"));
-        user = userRepository.save(user);
-
         ApiKey apiKeyEntity = ApiKey.builder()
-                .user(user)
+                .clientId(request.getClientId())
+                .clientApplication(request.getClientApplication())
                 .keyHash(hashedKey)
                 .keyName(request.getKeyName())
                 .isActive(true)
                 .expiresAt(request.getExpiresAt())
+                .createdBy(username)
                 .build();
 
         ApiKey savedApiKey = apiKeyRepository.save(apiKeyEntity);
@@ -79,13 +48,13 @@ public class ApiKeyService {
         // Store the plain key temporarily for response (in production, this should be handled differently)
         savedApiKey.setPlainKey(plainApiKey);
 
-        log.info("Generated API key for user ID: {} with name: {}", userId, request.getKeyName());
+        log.info("Generated API key for user ID: {} with name: {}", username, request.getKeyName());
 
         return savedApiKey;
     }
 
-    public List<ApiKey> getUserApiKeys(User user) {
-        return apiKeyRepository.findByUserIdAndIsActiveTrue(user.getId());
+    public List<ApiKey> getUserApiKeys(String username) {
+        return apiKeyRepository.findByCreatedByAndIsActiveTrue(username);
     }
 
     @Transactional
@@ -93,9 +62,9 @@ public class ApiKeyService {
         ApiKey apiKey = apiKeyRepository.findById(apiKeyId)
                 .orElseThrow(() -> new IllegalArgumentException("API key not found: " + apiKeyId));
 
-        if (!apiKey.getUser().getId().equals(user.getId())) {
-            throw new IllegalArgumentException("API key does not belong to user");
-        }
+//        if (!apiKey.getUser().getId().equals(user.getId())) {
+//            throw new IllegalArgumentException("API key does not belong to user");
+//        }
 
         apiKeyRepository.deactivateById(apiKeyId);
         log.info("Deactivated API key: {} for user: {}", apiKeyId, user.getUsername());

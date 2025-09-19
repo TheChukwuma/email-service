@@ -17,7 +17,7 @@ public interface ApiKeyRepository extends JpaRepository<ApiKey, Long> {
     
     Optional<ApiKey> findByKeyHash(String keyHash);
     
-    List<ApiKey> findByUserIdAndIsActiveTrue(Long userId);
+    List<ApiKey> findByCreatedByAndIsActiveTrue(String createdBy);
     
     @Query("SELECT ak FROM ApiKey ak WHERE ak.keyHash = :keyHash AND ak.isActive = true AND (ak.expiresAt IS NULL OR ak.expiresAt > :now)")
     Optional<ApiKey> findActiveByKeyHash(@Param("keyHash") String keyHash, @Param("now") LocalDateTime now);

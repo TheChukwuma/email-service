@@ -13,9 +13,11 @@ CREATE TABLE IF NOT EXISTS users (
 -- Create api_keys table
 CREATE TABLE IF NOT EXISTS api_keys (
     id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     key_hash VARCHAR(255) UNIQUE NOT NULL,
     key_name VARCHAR(100) NOT NULL,
+    client_id VARCHAR(100) NOT NULL,
+    client_application VARCHAR(100) NOT NULL,
+    created_by VARCHAR(100) NOT NULL,
     is_active BOOLEAN DEFAULT true,
     last_used_at TIMESTAMP,
     expires_at TIMESTAMP,
@@ -114,7 +116,6 @@ CREATE INDEX idx_emails_to_address ON emails(to_address);
 CREATE INDEX idx_email_events_email_id ON email_events(email_id);
 CREATE INDEX idx_email_events_event_type ON email_events(event_type);
 CREATE INDEX idx_email_events_created_at ON email_events(created_at);
-CREATE INDEX idx_api_keys_user_id ON api_keys(user_id);
 CREATE INDEX idx_api_keys_key_hash ON api_keys(key_hash);
 CREATE INDEX idx_blacklist_email_address ON blacklist(email_address);
 CREATE INDEX idx_attachments_created_by ON attachments(created_by);

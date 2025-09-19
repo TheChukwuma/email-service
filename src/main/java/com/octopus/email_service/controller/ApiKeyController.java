@@ -2,21 +2,15 @@ package com.octopus.email_service.controller;
 
 import com.octopus.email_service.dto.ApiKeyRequest;
 import com.octopus.email_service.dto.ApiResponse;
-import com.octopus.email_service.dto.LoginRequest;
-import com.octopus.email_service.dto.UserRequest;
 import com.octopus.email_service.entity.ApiKey;
 import com.octopus.email_service.entity.User;
-import com.octopus.email_service.security.JwtUtil;
 import com.octopus.email_service.service.ApiKeyService;
 import com.octopus.email_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,7 +37,7 @@ public class ApiKeyController {
             User user = userService.findByUsername(username)
                     .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
             
-            ApiKey apiKey = apiKeyService.generateApiKey(user.getId(), request);
+            ApiKey apiKey = apiKeyService.createApiKey(user.getUsername(), request);
             
             Map<String, String> response = new HashMap<>();
             response.put("apiKey", apiKey.getPlainKey()); // Return the plain key only once

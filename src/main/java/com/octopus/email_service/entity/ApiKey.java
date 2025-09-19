@@ -21,10 +21,12 @@ public class ApiKey {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+
+    @Column(name = "client_id", unique = true, nullable = false)
+    private String clientId;
+
+    @Column(name = "client_application", unique = true, nullable = false)
+    private String clientApplication;
     
     @Column(name = "key_hash", unique = true, nullable = false)
     private String keyHash;
@@ -49,6 +51,9 @@ public class ApiKey {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "created_by", nullable = false)
+    private String createdBy;
     
     @Transient
     private String plainKey; // Temporary field for API response, not persisted

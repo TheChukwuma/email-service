@@ -19,5 +19,6 @@ public class ApiKeyRequest {
     @Size(min = 1, max = 100, message = "Key name must be between 1 and 100 characters")
     private String keyName;
     private String clientId; //username of client
+    private String clientApplication; //application/service of client
     private LocalDateTime expiresAt;
 }

@@ -87,36 +87,13 @@ public class AdminController {
     }
     
     // API Key Management
-    @PostMapping("/users/{userId}/api-keys")
-    public ResponseEntity<ApiResponse<Map<String, String>>> createApiKey(
-            @PathVariable Long userId,
-            @Valid @RequestBody ApiKeyRequest request) {
-        try {
-            User user = userService.findByUsername(request.getKeyName()) // This should be fixed
-                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            
-            String apiKey = apiKeyService.createApiKey(user, request);
-            
-            Map<String, String> response = Map.of(
-                "apiKey", apiKey,
-                "keyName", request.getKeyName()
-            );
-            
-            return ResponseEntity.ok(ApiResponse.success("API key created successfully", response));
-        } catch (Exception e) {
-            log.error("Failed to create API key for user: {}", userId, e);
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Failed to create API key: " + e.getMessage()));
-        }
-    }
-    
     @GetMapping("/users/{userId}/api-keys")
     public ResponseEntity<ApiResponse<List<ApiKey>>> getUserApiKeys(@PathVariable Long userId) {
         try {
             User user = userService.findByUsername("") // This should be fixed
                     .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            
-            List<ApiKey> apiKeys = apiKeyService.getUserApiKeys(user);
+
+            List<ApiKey> apiKeys = apiKeyService.getUserApiKeys(user.getUsername());
             return ResponseEntity.ok(ApiResponse.success(apiKeys));
         } catch (Exception e) {
             log.error("Failed to get API keys for user: {}", userId, e);
@@ -124,7 +101,7 @@ public class AdminController {
                     .body(ApiResponse.error("Failed to get API keys: " + e.getMessage()));
         }
     }
-    
+
     @DeleteMapping("/api-keys/{apiKeyId}")
     public ResponseEntity<ApiResponse<Void>> deactivateApiKey(
             @PathVariable Long apiKeyId,
