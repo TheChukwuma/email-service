@@ -50,12 +50,13 @@ public class FileUploadConfig {
     }
     
     private long parseSize(String size) {
+        long parseLong = Long.parseLong(size.substring(0, size.length() - 2));
         if (size.endsWith("KB")) {
-            return Long.parseLong(size.substring(0, size.length() - 2)) * 1024;
+            return parseLong * 1024;
         } else if (size.endsWith("MB")) {
-            return Long.parseLong(size.substring(0, size.length() - 2)) * 1024 * 1024;
+            return parseLong * 1024 * 1024;
         } else if (size.endsWith("GB")) {
-            return Long.parseLong(size.substring(0, size.length() - 2)) * 1024 * 1024 * 1024;
+            return parseLong * 1024 * 1024 * 1024;
         } else {
             return Long.parseLong(size);
         }

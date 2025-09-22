@@ -55,6 +55,10 @@ public class ApiKey {
     @Column(name = "created_by", nullable = false)
     private String createdBy;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id")
+    private EmailTenant tenant;
+    
     @Transient
     private String plainKey; // Temporary field for API response, not persisted
 

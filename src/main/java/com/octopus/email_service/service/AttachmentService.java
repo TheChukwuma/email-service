@@ -22,8 +22,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -32,41 +37,41 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 @Slf4j
 public class AttachmentService {
-    
+
     private final MinioClient minioClient;
     private final Cloudinary cloudinary;
     private final Tika tika;
     private final AttachmentRepository attachmentRepository;
-    
+
     @Value("${minio.bucket-name}")
     private String bucketName;
-    
+
     @Value("${minio.endpoint}")
     private String minioEndpoint;
-    
+
     @Value("${app.attachment.max-file-size:10485760}") // 10MB default
     private long maxFileSizeBytes;
-    
+
     @Value("${app.attachment.allowed-mime-types}")
     private Set<String> allowedMimeTypes;
-    
+
     @Value("${app.attachment.default-expiry-hours:24}")
     private int defaultExpiryHours;
-    
+
     @Transactional
     public AttachmentResponse uploadAttachment(MultipartFile file, AttachmentUploadRequest request, String createdBy) {
         try {
             // Validate file
             validateFile(file);
-            
+
             // Generate unique filename and metadata
             String storedFilename = generateUniqueFileName(file.getOriginalFilename());
             String contentType = detectContentType(file);
             String checksum = calculateChecksum(file.getBytes());
-            
+
             // Determine storage type
             Attachment.StorageType storageType = determineStorageType(request.getStorageType(), file);
-            
+
             // Create attachment record
             Attachment attachment = Attachment.builder()
                     .originalFilename(file.getOriginalFilename())
@@ -76,50 +81,50 @@ public class AttachmentService {
                     .storageType(storageType)
                     .checksum(checksum)
                     .createdBy(createdBy)
-                    .expiresAt(request.getExpiresAt() != null ? 
-                        request.getExpiresAt() : 
-                        LocalDateTime.now().plusHours(defaultExpiryHours))
+                    .expiresAt(request.getExpiresAt() != null ?
+                            request.getExpiresAt() :
+                            LocalDateTime.now().plusHours(defaultExpiryHours))
                     .build();
-            
+
             // Upload to storage
             String storagePath = uploadToStorage(file, attachment, request);
             attachment.setStoragePath(storagePath);
-            
+
             // Save to database
             attachment = attachmentRepository.save(attachment);
-            
+
             log.info("Attachment uploaded successfully: {} by user: {}", attachment.getId(), createdBy);
             return AttachmentResponse.fromEntity(attachment);
-            
+
         } catch (Exception e) {
             log.error("Failed to upload attachment: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to upload attachment: " + e.getMessage(), e);
         }
     }
-    
+
     @Transactional
-    public AttachmentResponse uploadBase64Attachment(String base64Content, String filename, 
-                                                   String contentType, AttachmentUploadRequest request, String createdBy) {
+    public AttachmentResponse uploadBase64Attachment(String base64Content, String filename,
+                                                     String contentType, AttachmentUploadRequest request, String createdBy) {
         try {
             byte[] content = Base64.getDecoder().decode(base64Content);
-            
+
             if (content.length > maxFileSizeBytes) {
                 throw new IllegalArgumentException("File size exceeds maximum allowed size");
             }
-            
+
             // Validate content type
             String detectedType = tika.detect(content);
             if (!allowedMimeTypes.contains(detectedType)) {
                 throw new IllegalArgumentException("File type not allowed: " + detectedType);
             }
-            
+
             // Generate metadata
             String storedFilename = generateUniqueFileName(filename);
             String checksum = calculateChecksum(content);
-            
+
             // Determine storage type
             Attachment.StorageType storageType = determineStorageType(request.getStorageType(), content.length);
-            
+
             // Create attachment record
             Attachment attachment = Attachment.builder()
                     .originalFilename(filename)
@@ -129,85 +134,83 @@ public class AttachmentService {
                     .storageType(storageType)
                     .checksum(checksum)
                     .createdBy(createdBy)
-                    .expiresAt(request.getExpiresAt() != null ? 
-                        request.getExpiresAt() : 
-                        LocalDateTime.now().plusHours(defaultExpiryHours))
+                    .expiresAt(request.getExpiresAt() != null ?
+                            request.getExpiresAt() :
+                            LocalDateTime.now().plusHours(defaultExpiryHours))
                     .build();
-            
+
             // Upload to storage
             String storagePath = uploadBase64ToStorage(content, attachment, request);
             attachment.setStoragePath(storagePath);
-            
+
             // Save to database
             attachment = attachmentRepository.save(attachment);
-            
+
             log.info("Base64 attachment uploaded successfully: {} by user: {}", attachment.getId(), createdBy);
             return AttachmentResponse.fromEntity(attachment);
-            
+
         } catch (Exception e) {
             log.error("Failed to upload base64 attachment: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to upload base64 attachment: " + e.getMessage(), e);
         }
     }
-    
+
     public InputStream downloadAttachment(UUID attachmentId) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Attachment not found: " + attachmentId));
-        
+
         try {
-            switch (attachment.getStorageType()) {
-                case MINIO:
-                    return minioClient.getObject(
+            return switch (attachment.getStorageType()) {
+                case MINIO -> minioClient.getObject(
                         GetObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(attachment.getMinioObjectKey())
-                            .build()
-                    );
-                case CLOUDINARY:
-                    // For Cloudinary, we would typically redirect to the URL
-                    // This is a simplified implementation
-                    throw new UnsupportedOperationException("Direct download from Cloudinary not implemented");
-                default:
-                    throw new IllegalArgumentException("Unsupported storage type: " + attachment.getStorageType());
-            }
+                                .bucket(bucketName)
+                                .object(attachment.getMinioObjectKey())
+                                .build()
+                );
+                case CLOUDINARY ->
+                    // Download from Cloudinary using the secure URL
+                        downloadFromCloudinary(attachment);
+                default ->
+                        throw new IllegalArgumentException("Unsupported storage type: " + attachment.getStorageType());
+            };
         } catch (Exception e) {
             log.error("Failed to download attachment: {}", attachmentId, e);
             throw new RuntimeException("Failed to download attachment", e);
         }
     }
-    
+
     public AttachmentResponse getAttachment(UUID attachmentId) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Attachment not found: " + attachmentId));
-        
+
         return AttachmentResponse.fromEntity(attachment);
     }
-    
+
     @Transactional
     public void deleteAttachment(UUID attachmentId) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Attachment not found: " + attachmentId));
-        
+
         try {
             // Delete from storage
             deleteFromStorage(attachment);
-            
+
             // Delete from database
             attachmentRepository.delete(attachment);
-            
+
             log.info("Attachment deleted successfully: {}", attachmentId);
         } catch (Exception e) {
             log.error("Failed to delete attachment: {}", attachmentId, e);
             throw new RuntimeException("Failed to delete attachment", e);
         }
     }
-    
+
     @Async
     @Transactional
-    public CompletableFuture<Void> cleanupExpiredAttachments() {
+    public void cleanupExpiredAttachments() {
         try {
             List<Attachment> expiredAttachments = attachmentRepository.findExpiredAttachments(LocalDateTime.now());
-            
+
             for (Attachment attachment : expiredAttachments) {
                 try {
                     deleteFromStorage(attachment);
@@ -217,30 +220,30 @@ public class AttachmentService {
                     log.error("Failed to cleanup expired attachment: {}", attachment.getId(), e);
                 }
             }
-            
+
             log.info("Cleanup completed. Processed {} expired attachments", expiredAttachments.size());
-            return CompletableFuture.completedFuture(null);
+            CompletableFuture.completedFuture(null);
         } catch (Exception e) {
             log.error("Failed to cleanup expired attachments", e);
-            return CompletableFuture.failedFuture(e);
+            CompletableFuture.failedFuture(e);
         }
     }
-    
+
     public List<AttachmentResponse> getUserAttachments(String createdBy) {
         return attachmentRepository.findByCreatedBy(createdBy)
                 .stream()
                 .map(AttachmentResponse::fromEntity)
                 .toList();
     }
-    
+
     public Long getUserAttachmentCount(String createdBy, LocalDateTime since) {
         return attachmentRepository.countByCreatedBySince(createdBy, since);
     }
-    
+
     public Long getUserAttachmentSize(String createdBy, LocalDateTime since) {
         return attachmentRepository.sumFileSizeByCreatedBySince(createdBy, since);
     }
-    
+
     private String uploadToStorage(MultipartFile file, Attachment attachment, AttachmentUploadRequest request) throws Exception {
         return switch (attachment.getStorageType()) {
             case MINIO -> uploadToMinIO(file, attachment);
@@ -248,7 +251,7 @@ public class AttachmentService {
             default -> throw new IllegalArgumentException("Unsupported storage type: " + attachment.getStorageType());
         };
     }
-    
+
     private String uploadBase64ToStorage(byte[] content, Attachment attachment, AttachmentUploadRequest request) throws Exception {
         return switch (attachment.getStorageType()) {
             case MINIO -> uploadBase64ToMinIO(content, attachment);
@@ -256,106 +259,132 @@ public class AttachmentService {
             default -> throw new IllegalArgumentException("Unsupported storage type: " + attachment.getStorageType());
         };
     }
-    
+
     private String uploadToMinIO(MultipartFile file, Attachment attachment) throws Exception {
         try (InputStream inputStream = file.getInputStream()) {
             minioClient.putObject(
-                PutObjectArgs.builder()
-                    .bucket(bucketName)
-                    .object(attachment.getStoredFilename())
-                    .stream(inputStream, file.getSize(), -1)
-                    .contentType(attachment.getContentType())
-                    .build()
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(attachment.getStoredFilename())
+                            .stream(inputStream, file.getSize(), -1)
+                            .contentType(attachment.getContentType())
+                            .build()
             );
-            
+
             attachment.setMinioBucket(bucketName);
             attachment.setMinioObjectKey(attachment.getStoredFilename());
-            
+
             return minioEndpoint + "/" + bucketName + "/" + attachment.getStoredFilename();
         }
     }
-    
+
     private String uploadBase64ToMinIO(byte[] content, Attachment attachment) throws Exception {
         try (ByteArrayInputStream inputStream = new ByteArrayInputStream(content)) {
             minioClient.putObject(
-                PutObjectArgs.builder()
-                    .bucket(bucketName)
-                    .object(attachment.getStoredFilename())
-                    .stream(inputStream, content.length, -1)
-                    .contentType(attachment.getContentType())
-                    .build()
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(attachment.getStoredFilename())
+                            .stream(inputStream, content.length, -1)
+                            .contentType(attachment.getContentType())
+                            .build()
             );
-            
+
             attachment.setMinioBucket(bucketName);
             attachment.setMinioObjectKey(attachment.getStoredFilename());
-            
+
             return minioEndpoint + "/" + bucketName + "/" + attachment.getStoredFilename();
         }
     }
-    
+
     private String uploadToCloudinary(MultipartFile file, Attachment attachment, AttachmentUploadRequest request) throws Exception {
-        Map<String, Object> options = new HashMap<>();
-        options.put("resource_type", "auto");
-        options.put("folder", "email-attachments");
-        
-        if (request.getOptimizeImage() != null && request.getOptimizeImage()) {
-            options.put("quality", "auto");
-            options.put("fetch_format", "auto");
+        Map<String, Object> uploadOptions;
+
+        // Build options based on request parameters
+        if (request.getOptimizeImage() != null && request.getOptimizeImage() &&
+                request.getGenerateThumbnail() != null && request.getGenerateThumbnail()) {
+            uploadOptions = ObjectUtils.asMap(
+                    "resource_type", "auto",
+                    "folder", "email-attachments",
+                    "quality", "auto",
+                    "fetch_format", "auto",
+                    "transformation", "w_150,h_150,c_fill"
+            );
+        } else if (request.getOptimizeImage() != null && request.getOptimizeImage()) {
+            uploadOptions = ObjectUtils.asMap(
+                    "resource_type", "auto",
+                    "folder", "email-attachments",
+                    "quality", "auto",
+                    "fetch_format", "auto"
+            );
+        } else if (request.getGenerateThumbnail() != null && request.getGenerateThumbnail()) {
+            uploadOptions = ObjectUtils.asMap(
+                    "resource_type", "auto",
+                    "folder", "email-attachments",
+                    "transformation", "w_150,h_150,c_fill"
+            );
+        } else {
+            uploadOptions = ObjectUtils.asMap(
+                    "resource_type", "auto",
+                    "folder", "email-attachments"
+            );
         }
-        
-        if (request.getGenerateThumbnail() != null && request.getGenerateThumbnail()) {
-            options.put("transformation", "w_150,h_150,c_fill");
-        }
-        
+
         @SuppressWarnings("unchecked")
         Map<String, Object> uploadResult = cloudinary.uploader().upload(
-            file.getBytes(),
-            ObjectUtils.asMap(options)
+                file.getBytes(),
+                uploadOptions
         );
-        
+
         String publicId = (String) uploadResult.get("public_id");
         String secureUrl = (String) uploadResult.get("secure_url");
-        
+
         attachment.setCloudinaryPublicId(publicId);
         attachment.setCloudinaryUrl(secureUrl);
-        
+
         return secureUrl;
     }
-    
+
     private String uploadBase64ToCloudinary(byte[] content, Attachment attachment, AttachmentUploadRequest request) throws Exception {
-        Map<String, Object> options = new HashMap<>();
-        options.put("resource_type", "auto");
-        options.put("folder", "email-attachments");
-        
+        Map<String, Object> uploadOptions;
+
         if (request.getOptimizeImage() != null && request.getOptimizeImage()) {
-            options.put("quality", "auto");
-            options.put("fetch_format", "auto");
+            uploadOptions = ObjectUtils.asMap(
+                    "resource_type", "auto",
+                    "folder", "email-attachments",
+                    "quality", "auto",
+                    "fetch_format", "auto"
+            );
+        } else {
+            uploadOptions = ObjectUtils.asMap(
+                    "resource_type", "auto",
+                    "folder", "email-attachments"
+            );
         }
-        
+
         @SuppressWarnings("unchecked")
         Map<String, Object> uploadResult = cloudinary.uploader().upload(
-            content,
-            ObjectUtils.asMap(options)
+                content,
+                uploadOptions
         );
-        
+
         String publicId = (String) uploadResult.get("public_id");
         String secureUrl = (String) uploadResult.get("secure_url");
-        
+
         attachment.setCloudinaryPublicId(publicId);
         attachment.setCloudinaryUrl(secureUrl);
-        
+
         return secureUrl;
     }
-    
+
     private void deleteFromStorage(Attachment attachment) throws Exception {
         switch (attachment.getStorageType()) {
             case MINIO:
                 if (attachment.getMinioObjectKey() != null) {
                     minioClient.removeObject(
-                        RemoveObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(attachment.getMinioObjectKey())
-                            .build()
+                            RemoveObjectArgs.builder()
+                                    .bucket(bucketName)
+                                    .object(attachment.getMinioObjectKey())
+                                    .build()
                     );
                 }
                 break;
@@ -368,22 +397,22 @@ public class AttachmentService {
                 log.warn("Unknown storage type for deletion: {}", attachment.getStorageType());
         }
     }
-    
+
     private void validateFile(MultipartFile file) {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
-        
+
         if (file.getSize() > maxFileSizeBytes) {
             throw new IllegalArgumentException("File size exceeds maximum allowed size: " + maxFileSizeBytes);
         }
-        
+
         // Validate content type
         String contentType = file.getContentType();
         if (contentType == null || !allowedMimeTypes.contains(contentType)) {
             throw new IllegalArgumentException("File type not allowed: " + contentType);
         }
-        
+
         // Additional validation using Tika to detect actual file type
         try {
             String detectedType = tika.detect(file.getInputStream());
@@ -395,7 +424,7 @@ public class AttachmentService {
             throw new IllegalArgumentException("Failed to validate file type");
         }
     }
-    
+
     private String detectContentType(MultipartFile file) {
         try {
             return tika.detect(file.getInputStream());
@@ -404,7 +433,7 @@ public class AttachmentService {
             return file.getContentType();
         }
     }
-    
+
     private String calculateChecksum(byte[] content) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -415,7 +444,7 @@ public class AttachmentService {
             return null;
         }
     }
-    
+
     private Attachment.StorageType determineStorageType(AttachmentUploadRequest.StorageType requestedType, MultipartFile file) {
         if (requestedType == AttachmentUploadRequest.StorageType.AUTO) {
             // Auto-determine based on file type and size
@@ -425,14 +454,14 @@ public class AttachmentService {
                 return Attachment.StorageType.MINIO;
             }
         }
-        
+
         return switch (requestedType) {
             case MINIO -> Attachment.StorageType.MINIO;
             case CLOUDINARY -> Attachment.StorageType.CLOUDINARY;
             default -> Attachment.StorageType.MINIO;
         };
     }
-    
+
     private Attachment.StorageType determineStorageType(AttachmentUploadRequest.StorageType requestedType, long fileSize) {
         if (requestedType == AttachmentUploadRequest.StorageType.AUTO) {
             // Auto-determine based on file size
@@ -442,23 +471,97 @@ public class AttachmentService {
                 return Attachment.StorageType.MINIO;
             }
         }
-        
+
         return switch (requestedType) {
             case MINIO -> Attachment.StorageType.MINIO;
             case CLOUDINARY -> Attachment.StorageType.CLOUDINARY;
             default -> Attachment.StorageType.MINIO;
         };
     }
-    
+
     private boolean isImageFile(String contentType) {
         return contentType != null && contentType.startsWith("image/");
     }
-    
+
     private String generateUniqueFileName(String originalFileName) {
         String extension = "";
         if (originalFileName != null && originalFileName.contains(".")) {
             extension = originalFileName.substring(originalFileName.lastIndexOf("."));
         }
-        return UUID.randomUUID().toString() + extension;
+        return UUID.randomUUID() + extension;
+    }
+
+    private InputStream downloadFromCloudinary(Attachment attachment) throws Exception {
+        if (attachment.getCloudinaryPublicId() == null || attachment.getCloudinaryPublicId().trim().isEmpty()) {
+            throw new IllegalArgumentException("Cloudinary Public ID is not available for attachment: " + attachment.getId());
+        }
+
+        String publicId = attachment.getCloudinaryPublicId();
+        Exception lastException = null;
+
+        // Approach 1: Use stored Cloudinary URL if available
+        if (attachment.getCloudinaryUrl() != null && !attachment.getCloudinaryUrl().trim().isEmpty()) {
+            try {
+                log.debug("Downloading from stored Cloudinary URL: {}", attachment.getCloudinaryUrl());
+                return openUrlStream(attachment.getCloudinaryUrl());
+            } catch (Exception e) {
+                log.warn("Failed with stored URL: {}", e.getMessage());
+            }
+        }
+
+        // Approach 2: Generate a signed URL with Cloudinary SDK
+        try {
+            log.debug("Generating signed Cloudinary URL for publicId: {}", publicId);
+            String signedUrl = cloudinary.url()
+                    .secure(true)
+                    .resourceType("auto")
+                    .signed(true)
+                    .generate(publicId);
+
+            return openUrlStream(signedUrl);
+        } catch (Exception e) {
+            log.warn("Failed with signed URL: {}", e.getMessage());
+            lastException = e;
+        }
+
+        // Approach 3: Use unsigned URL (if resource is public)
+        try {
+            log.debug("Generating unsigned Cloudinary URL for publicId: {}", publicId);
+            String publicUrl = cloudinary.url()
+                    .secure(true)
+                    .resourceType("auto")
+                    .generate(publicId);
+
+            return openUrlStream(publicUrl);
+        } catch (Exception e) {
+            log.error("All Cloudinary download methods failed for publicId: {}", publicId, e);
+            lastException = e;
+        }
+
+        throw new RuntimeException("Failed to download Cloudinary file after multiple attempts: " +
+                lastException.getMessage());
+    }
+
+    /**
+     * Utility to safely open a stream with timeouts.
+     */
+    private InputStream openUrlStream(String urlStr) throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(urlStr))
+                .timeout(Duration.ofSeconds(30))
+                .GET()
+                .build();
+
+        HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+
+        if (response.statusCode() != 200) {
+            throw new IOException("Failed to download file, status=" + response.statusCode());
+        }
+
+        return response.body();
     }
 }

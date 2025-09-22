@@ -32,6 +32,9 @@ public class Email {
     @Column(name = "from_address", nullable = false)
     private String fromAddress;
     
+    @Column(name = "reply_to_address")
+    private String replyToAddress;
+    
     @Column(name = "to_address", nullable = false)
     private String toAddress;
     
@@ -60,6 +63,14 @@ public class Email {
     
     @Column(columnDefinition = "TEXT")
     private String attachments;
+    
+    @Column(name = "is_html_body")
+    @Builder.Default
+    private Boolean isHtmlBody = false;
+    
+    @Column(name = "needs_fallback_template")
+    @Builder.Default
+    private Boolean needsFallbackTemplate = false;
     
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

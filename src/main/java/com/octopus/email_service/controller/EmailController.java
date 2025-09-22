@@ -3,8 +3,9 @@ package com.octopus.email_service.controller;
 import com.octopus.email_service.dto.ApiResponse;
 import com.octopus.email_service.dto.EmailRequest;
 import com.octopus.email_service.dto.EmailResponse;
-import com.octopus.email_service.entity.Email;
+import com.octopus.email_service.entity.ApiKey;
 import com.octopus.email_service.enums.EmailStatus;
+import com.octopus.email_service.service.ApiKeyService;
 import com.octopus.email_service.service.EmailService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,15 +27,36 @@ import java.util.UUID;
 public class EmailController {
     
     private final EmailService emailService;
+    private final ApiKeyService apiKeyService;
     
     @PostMapping("/send")
     public ResponseEntity<ApiResponse<EmailResponse>> sendEmail(
-            @Valid @RequestBody EmailRequest request) {
+            @Valid @RequestBody EmailRequest request,
+            @RequestHeader(value = "X-Api-Key", required = false) String apiKey) {
         
         try {
-            log.info("Received email send request from user: ");
-            EmailResponse response = emailService.sendEmail(request);
+            EmailResponse response;
+            
+            if (apiKey != null && !apiKey.trim().isEmpty()) {
+                // Validate API key and get tenant information
+                ApiKey validatedApiKey = apiKeyService.validateApiKey(apiKey);
+                log.info("Received email send request from client: {} with tenant: {}", 
+                        validatedApiKey.getClientId(),
+                        validatedApiKey.getTenant() != null ? validatedApiKey.getTenant().getTenantCode() : "none");
+                
+                // Use tenant-aware email service
+                response = emailService.sendEmail(request, validatedApiKey.getTenant());
+            } else {
+                // Fallback to regular email service for individual users
+                log.info("Received email send request without API key (individual user)");
+                response = emailService.sendEmail(request);
+            }
+            
             return ResponseEntity.ok(ApiResponse.success("Email queued successfully", response));
+        } catch (SecurityException e) {
+            log.error("API key validation failed", e);
+            return ResponseEntity.status(401)
+                    .body(ApiResponse.error("Authentication failed: " + e.getMessage()));
         } catch (Exception e) {
             log.error("Failed to send email", e);
             return ResponseEntity.badRequest()

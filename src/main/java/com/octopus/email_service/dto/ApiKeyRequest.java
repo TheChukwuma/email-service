@@ -21,4 +21,5 @@ public class ApiKeyRequest {
     private String clientId; //username of client
     private String clientApplication; //application/service of client
     private LocalDateTime expiresAt;
+    private Long tenantId; // Optional tenant ID for tenant-specific API keys
 }

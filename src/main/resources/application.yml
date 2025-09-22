@@ -1,4 +1,63 @@
 spring:
+  application:
+    name: email-service
+  
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5433/email_service
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+  
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  
+  # Mail Configuration (Gmail SMTP)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:aparche.service@gmail.com}
+    password: ${MAIL_PASSWORD:your-app-password}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  
+  # File Upload Configuration
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  
+  # Cache Configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 86400000
+  
+  # Redis Configuration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 60000
+  
+  # RabbitMQ Configuration
   rabbitmq:
     host: localhost
     port: 5672
@@ -9,3 +68,72 @@ spring:
     publisher-returns: true
     template:
       mandatory: true
+
+# Server Configuration
+server:
+  port: 8060
+
+# MinIO Configuration
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: email-attachments
+
+# Cloudinary Configuration
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:demo}
+  api-key: ${CLOUDINARY_API_KEY:123456789}
+  api-secret: ${CLOUDINARY_API_SECRET:abcd1234}
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:MySecretKey123456789MySecretKey123456789}
+  expiration: 300000
+
+# Application-specific Configuration
+app:
+  # Attachment Processing
+  attachment:
+    max-file-size: 10485760
+    allowed-mime-types: image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+    default-expiry-hours: 24
+  
+  # Security
+  security:
+    api-key-header: X-Api-Key
+    jwt-header: Authorization
+  
+  # Email Configuration
+  email:
+    max-attempts: 5
+    retry-delay: 60000
+    tracking-domain: localhost:8080
+    queue:
+      name: email.queue
+    exchange:
+      name: email.exchange
+    routing:
+      key: email.send
+
+# Management Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    com.octopus.email_service: INFO
+    org.springframework.amqp: DEBUG
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss} - %msg%n'

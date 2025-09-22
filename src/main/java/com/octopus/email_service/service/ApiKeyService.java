@@ -2,8 +2,10 @@ package com.octopus.email_service.service;
 
 import com.octopus.email_service.dto.ApiKeyRequest;
 import com.octopus.email_service.entity.ApiKey;
+import com.octopus.email_service.entity.EmailTenant;
 import com.octopus.email_service.entity.User;
 import com.octopus.email_service.repository.ApiKeyRepository;
+import com.octopus.email_service.repository.EmailTenantRepository;
 import com.octopus.email_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,7 @@ import java.util.Optional;
 public class ApiKeyService {
 
     private final ApiKeyRepository apiKeyRepository;
+    private final EmailTenantRepository tenantRepository;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional
@@ -32,6 +35,13 @@ public class ApiKeyService {
         // Generate a secure random API key
         String plainApiKey = generateSecureApiKey();
         String hashedKey = hashApiKey(plainApiKey);
+
+        // Get tenant if specified
+        EmailTenant tenant = null;
+        if (request.getTenantId() != null) {
+            tenant = tenantRepository.findById(request.getTenantId())
+                    .orElseThrow(() -> new IllegalArgumentException("Tenant not found: " + request.getTenantId()));
+        }
 
         ApiKey apiKeyEntity = ApiKey.builder()
                 .clientId(request.getClientId())
@@ -41,6 +51,7 @@ public class ApiKeyService {
                 .isActive(true)
                 .expiresAt(request.getExpiresAt())
                 .createdBy(username)
+                .tenant(tenant)
                 .build();
 
         ApiKey savedApiKey = apiKeyRepository.save(apiKeyEntity);
@@ -72,6 +83,37 @@ public class ApiKeyService {
 
     public Optional<ApiKey> findByKeyHash(String keyHash) {
         return apiKeyRepository.findByKeyHash(keyHash);
+    }
+    
+    /**
+     * Validate API key and return the ApiKey entity with tenant information
+     */
+    public ApiKey validateApiKey(String plainApiKey) {
+        if (plainApiKey == null || plainApiKey.trim().isEmpty()) {
+            throw new SecurityException("API key is required");
+        }
+        
+        String hashedKey = hashApiKey(plainApiKey);
+        ApiKey apiKey = apiKeyRepository.findByKeyHash(hashedKey)
+                .orElseThrow(() -> new SecurityException("Invalid API key"));
+        
+        if (!Boolean.TRUE.equals(apiKey.getIsActive())) {
+            throw new SecurityException("API key is inactive");
+        }
+        
+        if (apiKey.getExpiresAt() != null && apiKey.getExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+            throw new SecurityException("API key has expired");
+        }
+        
+        // Update last used timestamp
+        apiKey.setLastUsedAt(java.time.LocalDateTime.now());
+        apiKeyRepository.save(apiKey);
+        
+        log.debug("Validated API key for client: {} with tenant: {}", 
+                 apiKey.getClientId(), 
+                 apiKey.getTenant() != null ? apiKey.getTenant().getTenantCode() : "none");
+        
+        return apiKey;
     }
 
     private String generateSecureApiKey() {

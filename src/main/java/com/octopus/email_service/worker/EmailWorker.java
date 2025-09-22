@@ -2,13 +2,11 @@ package com.octopus.email_service.worker;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.octopus.email_service.dto.EmailRequest;
 import com.octopus.email_service.entity.Attachment;
 import com.octopus.email_service.entity.Email;
 import com.octopus.email_service.entity.Template;
 import com.octopus.email_service.enums.BodyType;
 import com.octopus.email_service.enums.EmailStatus;
-import com.octopus.email_service.repository.AttachmentRepository;
 import com.octopus.email_service.repository.EmailRepository;
 import com.octopus.email_service.service.AttachmentService;
 import com.octopus.email_service.service.EmailService;
@@ -29,7 +27,6 @@ import org.thymeleaf.context.Context;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -37,7 +34,6 @@ import java.util.UUID;
 public class EmailWorker {
     
     private final EmailRepository emailRepository;
-    private final AttachmentRepository attachmentRepository;
     private final EmailService emailService;
     private final AttachmentService attachmentService;
     private final JavaMailSender mailSender;
@@ -57,8 +53,19 @@ public class EmailWorker {
         
         Email email = emailRepository.findById(emailId).orElse(null);
         if (email == null) {
-            log.error("Email not found with ID: {}", emailId);
-            return;
+            log.error("Email not found with ID: {} - possible race condition, will retry", emailId);
+            // Sleep briefly and retry once in case of race condition
+            try {
+                Thread.sleep(100);
+                email = emailRepository.findById(emailId).orElse(null);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            }
+            
+            if (email == null) {
+                log.error("Email still not found with ID: {} after retry - skipping", emailId);
+                return;
+            }
         }
         
         // Check if email has exceeded max attempts
@@ -102,6 +109,12 @@ public class EmailWorker {
         helper.setFrom(email.getFromAddress());
         helper.setTo(email.getToAddress());
         
+        // Set reply-to address if provided
+        if (email.getReplyToAddress() != null && !email.getReplyToAddress().trim().isEmpty()) {
+            helper.setReplyTo(email.getReplyToAddress());
+            log.debug("Set reply-to address: {}", email.getReplyToAddress());
+        }
+        
         if (email.getCcAddresses() != null && !email.getCcAddresses().isEmpty()) {
             helper.setCc(email.getCcAddresses().toArray(new String[0]));
         }
@@ -113,6 +126,7 @@ public class EmailWorker {
         // Process subject and body
         String subject = email.getSubject();
         String body = email.getBody();
+        boolean isHtml = false;
         
         // If template is used, render it
         if (email.getTemplate() != null) {
@@ -132,26 +146,34 @@ public class EmailWorker {
                 context.setVariables(templateVars);
                 body = templateEngine.process(template.getBodyTemplate(), context);
             }
-
+            
+            // Set HTML flag based on template body type
+            isHtml = template.getBodyType() == BodyType.HTML;
         }
-//        else{
-//            // Thymeleaf context variables
-//            Context context = new Context();
-//            context.setVariable("subject", subject);
-//            context.setVariable("body", body);
-//            String htmlContent = templateEngine.process("email/classic-email", context);
-//            helper.setText(htmlContent, true);
-//
-//        }
+        // Check if we need to use fallback template for plain text body
+        else if (email.getNeedsFallbackTemplate() != null && email.getNeedsFallbackTemplate()) {
+            // Use classic template as fallback for plain text content
+            Context context = new Context();
+            context.setVariable("subject", subject);
+            context.setVariable("body", body);
+            
+            // Add any additional template variables if provided
+            Map<String, Object> templateVars = parseTemplateVars(email.getTemplateVars());
+            context.setVariables(templateVars);
+            
+            // Render using the classic email template
+            body = templateEngine.process("email/classic-email", context);
+            isHtml = true; // Classic template produces HTML
+            
+            log.debug("Applied classic fallback template for email ID: {}", email.getId());
+        }
+        // For HTML body content without template
+        else if (email.getIsHtmlBody() != null && email.getIsHtmlBody()) {
+            isHtml = true;
+        }
         
         helper.setSubject(subject);
-        
-        // Set body based on template type
-        if (email.getTemplate() != null && email.getTemplate().getBodyType() == BodyType.HTML) {
-            helper.setText(body, true);
-        }else{
-            helper.setText(body, false);
-        }
+        helper.setText(body, isHtml);
         
         // Add tracking headers
         helper.getMimeMessage().setHeader("X-Email-ID", email.getUuid().toString());

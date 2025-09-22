@@ -5,7 +5,6 @@ import com.octopus.email_service.dto.LoginRequest;
 import com.octopus.email_service.dto.UserRequest;
 import com.octopus.email_service.entity.User;
 import com.octopus.email_service.security.JwtUtil;
-import com.octopus.email_service.service.ApiKeyService;
 import com.octopus.email_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,6 @@ public class AuthController {
     
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
-    private final ApiKeyService apiKeyService;
     private final JwtUtil jwtUtil;
     
     @PostMapping("/login")
