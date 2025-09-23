@@ -1,6 +1,7 @@
 package com.octopus.email_service.entity;
 
 import com.octopus.email_service.enums.EmailStatus;
+import com.octopus.email_service.converter.StringListConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -35,9 +36,8 @@ public class Email {
     @Column(name = "reply_to_address")
     private String replyToAddress;
     
-    @ElementCollection
-    @CollectionTable(name = "email_to_addresses", joinColumns = @JoinColumn(name = "email_id"))
-    @Column(name = "to_address")
+    @Column(name = "to_addresses")
+    @Convert(converter = StringListConverter.class)
     private List<String> toAddresses;
     
     @ElementCollection

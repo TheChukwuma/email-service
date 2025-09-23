@@ -24,13 +24,13 @@ public class SuperAdminSetupService {
     private final SystemSettingRepository systemSettingRepository;
     private final PasswordEncoder passwordEncoder;
     
-    @Value("${app.security.superadmin-setup-secret:}")
+    @Value("${app.security.superadmin-setup-secret}")
     private String configuredSetupSecret;
     
-    @Value("${app.security.superadmin-setup-allowed-ips:}")
-    private List<String> allowedIPs;
+    @Value("${app.security.superadmin-setup-allowed-ips}")
+    private String allowedIPsString;
     
-    @Value("${app.security.superadmin-setup-window-minutes:30}")
+    @Value("${app.security.superadmin-setup-window-minutes}")
     private int setupWindowMinutes;
     
     private final LocalDateTime applicationStartTime = LocalDateTime.now();
@@ -54,12 +54,20 @@ public class SuperAdminSetupService {
     }
     
     public boolean isIpAddressAllowed(String clientIp) {
-        if (allowedIPs == null || allowedIPs.isEmpty()) {
+        System.out.println("the clientip id: " + clientIp);
+        if (allowedIPsString == null || allowedIPsString.trim().isEmpty()) {
             // If no IPs configured, allow localhost only
             return "127.0.0.1".equals(clientIp) || "::1".equals(clientIp) || "0:0:0:0:0:0:0:1".equals(clientIp);
         }
         
-        return allowedIPs.contains(clientIp);
+        // Parse comma-separated IPs
+        String[] allowedIPs = allowedIPsString.split(",");
+        for (String allowedIP : allowedIPs) {
+            if (allowedIP.trim().equals(clientIp)) {
+                return true;
+            }
+        }
+        return false;
     }
     
     @Transactional

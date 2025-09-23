@@ -26,7 +26,7 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
     @Query("SELECT e FROM Email e WHERE e.status = :status")
     Page<Email> findByStatus(@Param("status") EmailStatus status, Pageable pageable);
     
-    @Query("SELECT e FROM Email e WHERE :toAddress MEMBER OF e.toAddresses")
+    @Query("SELECT e FROM Email e WHERE e.toAddresses LIKE CONCAT('%', :toAddress, '%')")
     Page<Email> findByToAddress(@Param("toAddress") String toAddress, Pageable pageable);
     
     @Query("SELECT e FROM Email e WHERE e.createdAt BETWEEN :startDate AND :endDate")

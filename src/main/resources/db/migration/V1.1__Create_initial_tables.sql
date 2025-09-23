@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS emails (
     uuid UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
     from_address VARCHAR(255) NOT NULL,
     reply_to_address VARCHAR(255),
-    to_addresses TEXT[] NOT NULL,
+    to_addresses TEXT NOT NULL,
     cc_addresses TEXT[],
     bcc_addresses TEXT[],
     subject VARCHAR(500) NOT NULL,
@@ -66,12 +66,6 @@ CREATE TABLE IF NOT EXISTS emails (
     delivered_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create email recipient tables
-CREATE TABLE IF NOT EXISTS email_to_addresses (
-    email_id BIGINT NOT NULL REFERENCES emails(id) ON DELETE CASCADE,
-    to_address VARCHAR(255) NOT NULL
 );
 
 -- Create email_events table
@@ -121,22 +115,20 @@ CREATE TABLE IF NOT EXISTS attachments (
 );
 
 -- Create indexes for better performance
-CREATE INDEX idx_emails_status ON emails(status);
-CREATE INDEX idx_emails_created_at ON emails(created_at);
-CREATE INDEX idx_emails_uuid ON emails(uuid);
-CREATE INDEX idx_emails_to_addresses ON emails USING GIN(to_addresses);
-CREATE INDEX idx_email_to_addresses_email_id ON email_to_addresses(email_id);
-CREATE INDEX idx_email_to_addresses_address ON email_to_addresses(to_address);
-CREATE INDEX idx_email_events_email_id ON email_events(email_id);
-CREATE INDEX idx_email_events_event_type ON email_events(event_type);
-CREATE INDEX idx_email_events_created_at ON email_events(created_at);
-CREATE INDEX idx_api_keys_key_hash ON api_keys(key_hash);
-CREATE INDEX idx_blacklist_email_address ON blacklist(email_address);
-CREATE INDEX idx_attachments_created_by ON attachments(created_by);
-CREATE INDEX idx_attachments_storage_type ON attachments(storage_type);
-CREATE INDEX idx_attachments_is_processed ON attachments(is_processed);
-CREATE INDEX idx_attachments_expires_at ON attachments(expires_at);
-CREATE INDEX idx_attachments_created_at ON attachments(created_at);
+CREATE INDEX IF NOT EXISTS idx_emails_status ON emails(status);
+CREATE INDEX IF NOT EXISTS idx_emails_created_at ON emails(created_at);
+CREATE INDEX IF NOT EXISTS idx_emails_uuid ON emails(uuid);
+CREATE INDEX IF NOT EXISTS idx_emails_to_addresses ON emails(to_addresses);
+CREATE INDEX IF NOT EXISTS idx_email_events_email_id ON email_events(email_id);
+CREATE INDEX IF NOT EXISTS idx_email_events_event_type ON email_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_email_events_created_at ON email_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_api_keys_key_hash ON api_keys(key_hash);
+CREATE INDEX IF NOT EXISTS idx_blacklist_email_address ON blacklist(email_address);
+CREATE INDEX IF NOT EXISTS idx_attachments_created_by ON attachments(created_by);
+CREATE INDEX IF NOT EXISTS idx_attachments_storage_type ON attachments(storage_type);
+CREATE INDEX IF NOT EXISTS idx_attachments_is_processed ON attachments(is_processed);
+CREATE INDEX IF NOT EXISTS idx_attachments_expires_at ON attachments(expires_at);
+CREATE INDEX IF NOT EXISTS idx_attachments_created_at ON attachments(created_at);
 
 -- Create triggers for updated_at timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -147,20 +139,27 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Drop triggers if they exist and recreate them
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_api_keys_updated_at ON api_keys;
 CREATE TRIGGER update_api_keys_updated_at BEFORE UPDATE ON api_keys
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_templates_updated_at ON templates;
 CREATE TRIGGER update_templates_updated_at BEFORE UPDATE ON templates
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_emails_updated_at ON emails;
 CREATE TRIGGER update_emails_updated_at BEFORE UPDATE ON emails
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_blacklist_updated_at ON blacklist;
 CREATE TRIGGER update_blacklist_updated_at BEFORE UPDATE ON blacklist
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_attachments_updated_at ON attachments;
 CREATE TRIGGER update_attachments_updated_at BEFORE UPDATE ON attachments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

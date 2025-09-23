@@ -42,12 +42,12 @@ curl -X POST http://localhost:8080/v1/admin/tenants \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "tenantCode": "unionbank",
-    "tenantName": "Union Bank of Nigeria",
-    "defaultSenderEmail": "no-reply@unionbank.com",
-    "defaultSenderName": "Union Bank",
-    "defaultReplyToEmail": "support@unionbank.com",
-    "defaultReplyToName": "Union Bank Support"
+    "tenantCode": "verve",
+    "tenantName": "Verve International",
+    "defaultSenderEmail": "no-reply@verve.com",
+    "defaultSenderName": "Verve Intl",
+    "defaultReplyToEmail": "support@verve.com",
+    "defaultReplyToName": "Verve Support"
   }'
 ```
 
