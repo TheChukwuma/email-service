@@ -1,0 +1,63 @@
+{
+  "id": "email-service-test-env",
+  "name": "Email Service Test Environment",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "apiKey",
+      "value": "",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "jwtToken",
+      "value": "",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "emailId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "templateId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "attachmentId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "testEmail",
+      "value": "test@example.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "recipientEmail",
+      "value": "recipient@example.com",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}
+
+

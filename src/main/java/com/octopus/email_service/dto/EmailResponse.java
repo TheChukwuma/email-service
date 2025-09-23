@@ -20,7 +20,7 @@ public class EmailResponse {
     private Long id;
     private UUID uuid;
     private String fromAddress;
-    private String toAddress;
+    private List<String> toAddresses;
     private List<String> ccAddresses;
     private List<String> bccAddresses;
     private String subject;
@@ -42,7 +42,7 @@ public class EmailResponse {
                 .id(email.getId())
                 .uuid(email.getUuid())
                 .fromAddress(email.getFromAddress())
-                .toAddress(email.getToAddress())
+                .toAddresses(email.getToAddresses())
                 .ccAddresses(email.getCcAddresses())
                 .bccAddresses(email.getBccAddresses())
                 .subject(email.getSubject())

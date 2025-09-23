@@ -1,9 +1,7 @@
 package com.octopus.email_service.dto;
 
-import com.octopus.email_service.enums.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserRequest {
+public class SuperAdminSetupRequest {
     
     @NotBlank(message = "Username is required")
     @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
@@ -28,8 +26,10 @@ public class UserRequest {
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
     
-    @NotNull(message = "Role is required")
-    private UserRole role;
+    @NotBlank(message = "Setup secret is required")
+    private String setupSecret;
     
-    private Long tenantId; // Required for USER_TENANT role
+    // Optional fields for additional security
+    private String organizationName;
+    private String adminName;
 }

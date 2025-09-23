@@ -5,6 +5,7 @@ import com.octopus.email_service.dto.LoginRequest;
 import com.octopus.email_service.dto.UserRequest;
 import com.octopus.email_service.entity.User;
 import com.octopus.email_service.security.JwtUtil;
+import com.octopus.email_service.security.UserPrincipal;
 import com.octopus.email_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -30,18 +30,23 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<Map<String, String>>> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> login(@RequestBody LoginRequest request) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
             );
             
-            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            String token = jwtUtil.generateToken(userDetails);
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            User user = userPrincipal.getUser();
+            String token = jwtUtil.generateToken(userPrincipal);
             
-            Map<String, String> response = new HashMap<>();
+            Map<String, Object> response = new HashMap<>();
             response.put("token", token);
-            response.put("username", userDetails.getUsername());
+            response.put("username", user.getUsername());
+            response.put("email", user.getEmail());
+            response.put("role", user.getRole().name());
+            response.put("tenantId", user.getTenant() != null ? user.getTenant().getId() : null);
+            response.put("tenantName", user.getTenant() != null ? user.getTenant().getTenantName() : null);
             
             return ResponseEntity.ok(ApiResponse.success("Login successful", response));
             

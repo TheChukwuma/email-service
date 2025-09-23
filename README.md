@@ -5,11 +5,15 @@ A robust, scalable email service built with Spring Boot 3, featuring template-ba
 ## Features
 
 - **Email Sending**: Send templated or raw emails with support for HTML and text formats
+  - **Multiple Recipients**: Send emails to multiple TO addresses in a single request
 - **Template Management**: Create, update, and manage email templates with variable substitution
 - **Queue Processing**: Asynchronous email processing using RabbitMQ with retry logic
 - **Attachment Support**: Secure file upload with MinIO and Cloudinary integration
 - **Email Tracking**: Track email opens and clicks with pixel tracking and link rewriting
+- **Role-Based Access Control**: Three-tier role system (USER_TENANT, ADMIN, SUPERADMIN)
+- **Multi-Tenancy**: Tenant-scoped resources and permissions
 - **Authentication**: API key-based authentication for clients, JWT for admin operations
+- **Audit Logging**: Comprehensive audit trail for all user actions
 - **Monitoring**: Prometheus metrics and Grafana dashboards
 - **Database**: PostgreSQL with Flyway migrations
 - **Security**: File upload validation, rate limiting, and comprehensive security measures
@@ -94,6 +98,7 @@ The application will be available at `http://localhost:8080`
 
 - `POST /v1/auth/register` - Register a new user
 - `POST /v1/auth/login` - Login and get JWT token
+- `POST /v1/setup/superadmin` - Create initial SuperAdmin (one-time setup)
 
 ### Email Operations
 
@@ -125,7 +130,20 @@ The application will be available at `http://localhost:8080`
 
 ## Usage Examples
 
-### 1. Register a User
+### 1. Create Initial SuperAdmin (One-time Setup)
+
+```bash
+curl -X POST http://localhost:8080/v1/setup/superadmin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "superadmin",
+    "email": "admin@example.com",
+    "password": "securepassword123",
+    "setupSecret": "your-setup-secret"
+  }'
+```
+
+### 2. Register a User
 
 ```bash
 curl -X POST http://localhost:8080/v1/auth/register \
@@ -134,11 +152,12 @@ curl -X POST http://localhost:8080/v1/auth/register \
     "username": "testuser",
     "email": "test@example.com",
     "password": "password123",
-    "isAdmin": false
+    "role": "USER_TENANT",
+    "tenantId": 1
   }'
 ```
 
-### 2. Login and Get JWT Token
+### 3. Login and Get JWT Token
 
 ```bash
 curl -X POST http://localhost:8080/v1/auth/login \
@@ -149,7 +168,7 @@ curl -X POST http://localhost:8080/v1/auth/login \
   }'
 ```
 
-### 3. Create an API Key (Admin only)
+### 4. Create an API Key (Admin only)
 
 ```bash
 curl -X POST http://localhost:8080/v1/admin/users/1/api-keys \
@@ -161,7 +180,7 @@ curl -X POST http://localhost:8080/v1/admin/users/1/api-keys \
   }'
 ```
 
-### 4. Create a Template
+### 5. Create a Template
 
 ```bash
 curl -X POST http://localhost:8080/v1/templates \
@@ -175,7 +194,7 @@ curl -X POST http://localhost:8080/v1/templates \
   }'
 ```
 
-### 5. Send an Email
+### 6. Send an Email to Single Recipient
 
 ```bash
 curl -X POST http://localhost:8080/v1/emails/send \
@@ -183,13 +202,62 @@ curl -X POST http://localhost:8080/v1/emails/send \
   -H "X-Api-Key: YOUR_API_KEY" \
   -d '{
     "from": "noreply@example.com",
-    "to": "user@example.com",
+    "to": ["user@example.com"],
     "templateName": "welcome",
     "templateVars": {
       "name": "John Doe"
     }
   }'
 ```
+
+### 7. Send an Email to Multiple Recipients
+
+```bash
+curl -X POST http://localhost:8080/v1/emails/send \
+  -H "Content-Type: application/json" \
+  -H "X-Api-Key: YOUR_API_KEY" \
+  -d '{
+    "from": "noreply@example.com",
+    "to": ["user1@example.com", "user2@example.com", "user3@example.com"],
+    "cc": ["manager@example.com"],
+    "bcc": ["audit@example.com"],
+    "templateName": "newsletter",
+    "templateVars": {
+      "title": "Monthly Newsletter",
+      "month": "December 2025"
+    }
+  }'
+```
+
+## Role-Based Access Control
+
+The system implements a three-tier role hierarchy:
+
+### USER_TENANT
+- Can create and manage templates within their tenant
+- Can send emails using their tenant's resources
+- Can generate API keys without admin approval
+- Can view all resources scoped to their organization/tenant
+
+### ADMIN
+- All USER_TENANT permissions
+- Can create and edit USER_TENANT users
+- Can manage API keys for their tenant
+- Can access admin endpoints for user management
+- Cannot create or edit fellow ADMINs
+
+### SUPERADMIN
+- All ADMIN permissions
+- Can create and edit ADMIN users
+- Can delete any user
+- Can access all system APIs and statistics
+- Full system access and control
+
+### Tenant Scoping
+- Templates are scoped to tenants (not globally available)
+- API keys are tenant-specific
+- Users are associated with specific tenants
+- Resources are isolated by tenant for security
 
 ## Monitoring
 
@@ -224,7 +292,7 @@ mvn test
 
 ### Database Migrations
 
-Flyway migrations are automatically applied on startup. Migration files are located in `src/main/resources/db/migration/`.
+Flyway migrations are automatically applied on startup. Migration files are located in `src/main/resources/db/migration/` and follow the naming convention `V{major}.{minor}__{description}.sql`.
 
 ### Adding New Features
 

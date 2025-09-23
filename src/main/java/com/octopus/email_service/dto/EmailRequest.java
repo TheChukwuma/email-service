@@ -2,6 +2,7 @@ package com.octopus.email_service.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,9 +21,8 @@ public class EmailRequest {
     @Email(message = "From address must be a valid email")
     private String from;
     
-    @NotBlank(message = "To address is required")
-    @Email(message = "To address must be a valid email")
-    private String to;
+    @NotEmpty(message = "At least one To address is required")
+    private List<@Email String> to;
     
     private List<@Email String> cc;
     

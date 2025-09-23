@@ -69,7 +69,7 @@ public class TemplateService {
                 .orElseThrow(() -> new IllegalArgumentException("Template not found: " + name));
         
         // Check if user has permission to update (created by user or admin)
-        if (!template.getCreatedBy().getId().equals(user.getId()) && !user.getIsAdmin()) {
+        if (!template.getCreatedBy().getId().equals(user.getId()) && !user.hasAdminPrivileges()) {
             throw new IllegalArgumentException("You don't have permission to update this template");
         }
         
@@ -99,7 +99,7 @@ public class TemplateService {
                 .orElseThrow(() -> new IllegalArgumentException("Template not found: " + name));
         
         // Check if user has permission to delete (created by user or admin)
-        if (!template.getCreatedBy().getId().equals(user.getId()) && !user.getIsAdmin()) {
+        if (!template.getCreatedBy().getId().equals(user.getId()) && !user.hasAdminPrivileges()) {
             throw new IllegalArgumentException("You don't have permission to delete this template");
         }
         

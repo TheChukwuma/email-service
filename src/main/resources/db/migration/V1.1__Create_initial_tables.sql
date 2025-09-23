@@ -4,8 +4,9 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'USER_TENANT' CHECK (role IN ('USER_TENANT', 'ADMIN', 'SUPERADMIN')),
+    tenant_id BIGINT,
     is_active BOOLEAN DEFAULT true,
-    is_admin BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     client_id VARCHAR(100) NOT NULL,
     client_application VARCHAR(100) NOT NULL,
     created_by VARCHAR(100) NOT NULL,
+    tenant_id BIGINT,
     is_active BOOLEAN DEFAULT true,
     last_used_at TIMESTAMP,
     expires_at TIMESTAMP,
@@ -33,6 +35,7 @@ CREATE TABLE IF NOT EXISTS templates (
     body_template TEXT NOT NULL,
     body_type VARCHAR(20) DEFAULT 'html' CHECK (body_type IN ('html', 'text')),
     created_by BIGINT REFERENCES users(id),
+    tenant_id BIGINT,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -43,7 +46,8 @@ CREATE TABLE IF NOT EXISTS emails (
     id BIGSERIAL PRIMARY KEY,
     uuid UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
     from_address VARCHAR(255) NOT NULL,
-    to_address VARCHAR(255) NOT NULL,
+    reply_to_address VARCHAR(255),
+    to_addresses TEXT[] NOT NULL,
     cc_addresses TEXT[],
     bcc_addresses TEXT[],
     subject VARCHAR(500) NOT NULL,
@@ -51,6 +55,8 @@ CREATE TABLE IF NOT EXISTS emails (
     template_vars TEXT,
     body TEXT,
     attachments VARCHAR(50000),
+    is_html_body BOOLEAN DEFAULT FALSE,
+    needs_fallback_template BOOLEAN DEFAULT FALSE,
     status VARCHAR(20) DEFAULT 'ENQUEUED' CHECK (status IN ('ENQUEUED', 'SENDING', 'SENT', 'FAILED', 'BOUNCED', 'DELIVERED')),
     attempts INTEGER DEFAULT 0,
     max_attempts INTEGER DEFAULT 5,
@@ -60,6 +66,12 @@ CREATE TABLE IF NOT EXISTS emails (
     delivered_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create email recipient tables
+CREATE TABLE IF NOT EXISTS email_to_addresses (
+    email_id BIGINT NOT NULL REFERENCES emails(id) ON DELETE CASCADE,
+    to_address VARCHAR(255) NOT NULL
 );
 
 -- Create email_events table
@@ -112,7 +124,9 @@ CREATE TABLE IF NOT EXISTS attachments (
 CREATE INDEX idx_emails_status ON emails(status);
 CREATE INDEX idx_emails_created_at ON emails(created_at);
 CREATE INDEX idx_emails_uuid ON emails(uuid);
-CREATE INDEX idx_emails_to_address ON emails(to_address);
+CREATE INDEX idx_emails_to_addresses ON emails USING GIN(to_addresses);
+CREATE INDEX idx_email_to_addresses_email_id ON email_to_addresses(email_id);
+CREATE INDEX idx_email_to_addresses_address ON email_to_addresses(to_address);
 CREATE INDEX idx_email_events_email_id ON email_events(email_id);
 CREATE INDEX idx_email_events_event_type ON email_events(event_type);
 CREATE INDEX idx_email_events_created_at ON email_events(created_at);

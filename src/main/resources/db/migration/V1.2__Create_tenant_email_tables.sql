@@ -28,8 +28,10 @@ CREATE TABLE IF NOT EXISTS email_domains (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Add tenant_id to api_keys table for tenant-specific API keys
-ALTER TABLE api_keys ADD COLUMN tenant_id BIGINT REFERENCES email_tenants(id) ON DELETE SET NULL;
+-- Add foreign key constraints for tenant relationships (fields already exist in V1)
+ALTER TABLE users ADD CONSTRAINT fk_users_tenant FOREIGN KEY (tenant_id) REFERENCES email_tenants(id) ON DELETE SET NULL;
+ALTER TABLE api_keys ADD CONSTRAINT fk_api_keys_tenant FOREIGN KEY (tenant_id) REFERENCES email_tenants(id) ON DELETE SET NULL;
+ALTER TABLE templates ADD CONSTRAINT fk_templates_tenant FOREIGN KEY (tenant_id) REFERENCES email_tenants(id) ON DELETE CASCADE;
 
 -- Create indexes for better performance
 CREATE INDEX idx_tenant_code ON email_tenants(tenant_code);
@@ -37,6 +39,9 @@ CREATE INDEX idx_tenant_active ON email_tenants(is_active);
 CREATE UNIQUE INDEX idx_tenant_domain ON email_domains(domain, tenant_id);
 CREATE INDEX idx_domain_verified ON email_domains(is_verified);
 CREATE INDEX idx_api_key_tenant ON api_keys(tenant_id);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_tenant ON users(tenant_id);
+CREATE INDEX idx_templates_tenant ON templates(tenant_id);
 
 -- Insert some sample tenants for testing
 INSERT INTO email_tenants (tenant_code, tenant_name, default_sender_email, default_sender_name, default_reply_to_email, default_reply_to_name, is_active) VALUES

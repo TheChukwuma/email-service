@@ -35,8 +35,10 @@ public class Email {
     @Column(name = "reply_to_address")
     private String replyToAddress;
     
-    @Column(name = "to_address", nullable = false)
-    private String toAddress;
+    @ElementCollection
+    @CollectionTable(name = "email_to_addresses", joinColumns = @JoinColumn(name = "email_id"))
+    @Column(name = "to_address")
+    private List<String> toAddresses;
     
     @ElementCollection
     @CollectionTable(name = "email_cc_addresses", joinColumns = @JoinColumn(name = "email_id"))

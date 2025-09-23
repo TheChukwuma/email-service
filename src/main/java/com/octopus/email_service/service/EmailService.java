@@ -81,7 +81,7 @@ public class EmailService {
         // Create email entity
         Email email = Email.builder()
                 .fromAddress(request.getFrom())
-                .toAddress(request.getTo())
+                .toAddresses(request.getTo())
                 .ccAddresses(request.getCc())
                 .bccAddresses(request.getBcc())
                 .subject(request.getSubject())
@@ -112,8 +112,8 @@ public class EmailService {
                 }
             });
         
-        log.info("Email enqueued with ID: {} for recipient: {} with {} attachments", 
-                savedEmail.getId(), request.getTo(), 
+        log.info("Email enqueued with ID: {} for recipients: {} with {} attachments", 
+                savedEmail.getId(), String.join(", ", request.getTo()), 
                 request.getAttachments() != null ? request.getAttachments().size() : 0);
         
         return EmailResponse.fromEntity(savedEmail);
@@ -153,7 +153,7 @@ public class EmailService {
         Email email = Email.builder()
                 .fromAddress(effectiveSenderAddress)
                 .replyToAddress(effectiveReplyToAddress)
-                .toAddress(request.getTo())
+                .toAddresses(request.getTo())
                 .ccAddresses(request.getCc())
                 .bccAddresses(request.getBcc())
                 .subject(request.getSubject())
@@ -183,8 +183,8 @@ public class EmailService {
                 }
             });
         
-        log.info("Email enqueued with ID: {} for recipient: {} from tenant: {} with {} attachments", 
-                savedEmail.getId(), request.getTo(), 
+        log.info("Email enqueued with ID: {} for recipients: {} from tenant: {} with {} attachments", 
+                savedEmail.getId(), String.join(", ", request.getTo()), 
                 tenant != null ? tenant.getTenantCode() : "none",
                 request.getAttachments() != null ? request.getAttachments().size() : 0);
         

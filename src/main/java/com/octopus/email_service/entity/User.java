@@ -1,5 +1,6 @@
 package com.octopus.email_service.entity;
 
+import com.octopus.email_service.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -36,9 +37,14 @@ public class User {
     @Builder.Default
     private Boolean isActive = true;
     
-    @Column(name = "is_admin")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
     @Builder.Default
-    private Boolean isAdmin = false;
+    private UserRole role = UserRole.USER_TENANT;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id")
+    private EmailTenant tenant;
     
     @CreationTimestamp
     @Column(name = "created_at")
@@ -50,4 +56,29 @@ public class User {
     
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Template> templates;
+    
+    // Utility methods for role checking
+    public boolean isSuperAdmin() {
+        return role == UserRole.SUPERADMIN;
+    }
+    
+    public boolean isAdmin() {
+        return role == UserRole.ADMIN;
+    }
+    
+    public boolean isUserTenant() {
+        return role == UserRole.USER_TENANT;
+    }
+    
+    public boolean hasAdminPrivileges() {
+        return role == UserRole.ADMIN || role == UserRole.SUPERADMIN;
+    }
+    
+    public boolean canManageUserTenants() {
+        return role == UserRole.ADMIN || role == UserRole.SUPERADMIN;
+    }
+    
+    public boolean canCreateAdmins() {
+        return role == UserRole.SUPERADMIN;
+    }
 }

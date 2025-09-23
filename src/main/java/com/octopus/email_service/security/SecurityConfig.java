@@ -60,6 +60,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 // Public endpoints
                 .requestMatchers("/v1/auth/**", "/actuator/health", "/actuator/info").permitAll()
+                // SuperAdmin setup endpoints (public during setup window)
+                .requestMatchers("/v1/setup/**").permitAll()
                 // Email tracking endpoints (public for tracking pixels and click redirects)
                 .requestMatchers("/track/**").permitAll()
                 .requestMatchers("/v1/email/**").permitAll()

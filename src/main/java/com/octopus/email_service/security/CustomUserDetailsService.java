@@ -1,6 +1,7 @@
 package com.octopus.email_service.security;
 
 import com.octopus.email_service.entity.User;
+import com.octopus.email_service.enums.UserRole;
 import com.octopus.email_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -25,16 +27,34 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findActiveByUsernameOrEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username or email: " + username));
         
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUsername())
-                .password(user.getPasswordHash())
-                .authorities(user.getIsAdmin() ? 
-                    List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_USER")) :
-                    List.of(new SimpleGrantedAuthority("ROLE_USER")))
-                .accountExpired(false)
-                .accountLocked(!user.getIsActive())
-                .credentialsExpired(false)
-                .disabled(!user.getIsActive())
-                .build();
+        // Build authorities based on the user's role
+        List<SimpleGrantedAuthority> authorities = buildAuthorities(user.getRole());
+        
+        return new UserPrincipal(user, authorities);
+    }
+    
+    private List<SimpleGrantedAuthority> buildAuthorities(UserRole role) {
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        
+        // Add role-based authorities
+        switch (role) {
+            case SUPERADMIN:
+                authorities.add(new SimpleGrantedAuthority("ROLE_SUPERADMIN"));
+                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+                break;
+            case ADMIN:
+                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+                break;
+            case USER_TENANT:
+                authorities.add(new SimpleGrantedAuthority("ROLE_USER_TENANT"));
+                authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+                break;
+            default:
+                authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        }
+        
+        return authorities;
     }
 }

@@ -1,0 +1,35 @@
+{
+  "name": "email-service-integration-tests",
+  "version": "1.0.0",
+  "description": "Integration tests for Email Service API using Postman and Newman",
+  "scripts": {
+    "test": "newman run Email_Service_Postman_Collection.json -e Postman_Test_Environment.json --reporters cli,json,html --reporter-json-export test-results.json --reporter-html-export test-report.html",
+    "test:ci": "newman run Email_Service_Postman_Collection.json -e Postman_Test_Environment.json --reporters cli,json --reporter-json-export test-results.json",
+    "test:auth": "newman run Email_Service_Postman_Collection.json -e Postman_Test_Environment.json --folder 'Authentication' --reporters cli",
+    "test:email": "newman run Email_Service_Postman_Collection.json -e Postman_Test_Environment.json --folder 'Email Sending' --reporters cli",
+    "test:attachments": "newman run Email_Service_Postman_Collection.json -e Postman_Test_Environment.json --folder 'Attachment Management' --reporters cli",
+    "test:errors": "newman run Email_Service_Postman_Collection.json -e Postman_Test_Environment.json --folder 'Error Scenarios' --reporters cli",
+    "test:admin": "newman run Email_Service_Postman_Collection.json -e Postman_Test_Environment.json --folder 'Admin Functions' --reporters cli",
+    "install:newman": "npm install -g newman newman-reporter-html",
+    "setup": "npm run install:newman && echo 'Newman CLI installed successfully'",
+    "health-check": "curl -s http://localhost:8080/actuator/health || echo 'Service not running'"
+  },
+  "devDependencies": {
+    "newman": "^6.0.0",
+    "newman-reporter-html": "^1.0.5"
+  },
+  "keywords": [
+    "email-service",
+    "integration-tests",
+    "postman",
+    "newman",
+    "api-testing"
+  ],
+  "author": "Email Service Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
+
+

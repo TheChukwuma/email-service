@@ -86,7 +86,7 @@ public class EmailWorker {
             
             // Mark as sent
             emailService.markAsSent(emailId);
-            log.info("Successfully sent email ID: {} to {}", emailId, email.getToAddress());
+            log.info("Successfully sent email ID: {} to {}", emailId, String.join(", ", email.getToAddresses()));
             
         } catch (Exception e) {
             log.error("Failed to send email ID: {}", emailId, e);
@@ -107,7 +107,7 @@ public class EmailWorker {
         
         // Set basic email properties
         helper.setFrom(email.getFromAddress());
-        helper.setTo(email.getToAddress());
+        helper.setTo(email.getToAddresses().toArray(new String[0]));
         
         // Set reply-to address if provided
         if (email.getReplyToAddress() != null && !email.getReplyToAddress().trim().isEmpty()) {

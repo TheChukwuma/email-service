@@ -1,12 +1,12 @@
 package com.octopus.email_service.controller;
 
 import com.octopus.email_service.dto.ApiResponse;
-import com.octopus.email_service.dto.ApiKeyRequest;
 import com.octopus.email_service.dto.UserRequest;
 import com.octopus.email_service.entity.ApiKey;
 import com.octopus.email_service.entity.Email;
 import com.octopus.email_service.entity.User;
 import com.octopus.email_service.enums.EmailStatus;
+import com.octopus.email_service.security.UserPrincipal;
 import com.octopus.email_service.service.ApiKeyService;
 import com.octopus.email_service.service.EmailService;
 import com.octopus.email_service.service.UserService;
@@ -63,9 +63,11 @@ public class AdminController {
     @PutMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<User>> updateUser(
             @PathVariable Long userId,
-            @Valid @RequestBody UserRequest request) {
+            @Valid @RequestBody UserRequest request,
+            Authentication authentication) {
         try {
-            User user = userService.updateUser(userId, request);
+            User currentUser = getCurrentUser(authentication);
+            User user = userService.updateUser(userId, request, currentUser);
             return ResponseEntity.ok(ApiResponse.success("User updated successfully", user));
         } catch (Exception e) {
             log.error("Failed to update user: {}", userId, e);
@@ -75,9 +77,12 @@ public class AdminController {
     }
     
     @DeleteMapping("/users/{userId}")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long userId) {
+    public ResponseEntity<ApiResponse<Void>> deleteUser(
+            @PathVariable Long userId,
+            Authentication authentication) {
         try {
-            userService.deleteUser(userId);
+            User currentUser = getCurrentUser(authentication);
+            userService.deleteUser(userId, currentUser);
             return ResponseEntity.ok(ApiResponse.success("User deleted successfully", null));
         } catch (Exception e) {
             log.error("Failed to delete user: {}", userId, e);
@@ -159,5 +164,12 @@ public class AdminController {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Failed to get statistics: " + e.getMessage()));
         }
+    }
+    
+    private User getCurrentUser(Authentication authentication) {
+        if (authentication.getPrincipal() instanceof UserPrincipal userPrincipal) {
+            return userPrincipal.getUser();
+        }
+        throw new IllegalStateException("Invalid authentication principal");
     }
 }
